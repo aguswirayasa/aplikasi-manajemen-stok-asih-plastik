@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Manajemen Stok">
+  <rect width="512" height="512" rx="96" fill="#ff4f00"/>
+  <path d="M132 150 256 86l124 64-124 64-124-64Z" fill="#fffefb"/>
+  <path d="M132 184l104 54v142l-104-55V184Z" fill="#eceae3"/>
+  <path d="M380 184 276 238v142l104-55V184Z" fill="#201515"/>
+  <path d="M168 330h60v34h-60v-34Z" fill="#ff4f00"/>
+</svg>
