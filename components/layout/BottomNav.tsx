@@ -8,6 +8,7 @@ import {
   Package,
   ArrowDownToLine,
   ArrowUpFromLine,
+  MessageCircle,
   MoreHorizontal,
 } from "lucide-react";
 import { useSession } from "next-auth/react";
@@ -16,6 +17,7 @@ const mobileNavItems = [
   { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { title: "Produk", href: "/products", icon: Package },
   { title: "Kasir", href: "/stock/out", icon: ArrowUpFromLine },
+  { title: "Telegram", href: "/telegram", icon: MessageCircle },
 ];
 
 export function BottomNav() {

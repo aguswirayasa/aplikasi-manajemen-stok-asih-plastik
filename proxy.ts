@@ -23,6 +23,7 @@ export default withAuth(
           "/dashboard",
           "/stock",
           "/products",
+          "/telegram",
           "/variations",
           "/users",
         ];
@@ -63,6 +64,7 @@ export const config = {
     "/dashboard/:path*",
     "/stock/:path*",
     "/products/:path*",
+    "/telegram/:path*",
     "/variations/:path*",
     "/users/:path*",
     "/login",

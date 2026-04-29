@@ -9,6 +9,7 @@ import {
   ArrowDownToLine,
   ArrowUpFromLine,
   History,
+  MessageCircle,
   Settings2,
   Users,
   LogOut,
@@ -29,6 +30,10 @@ const adminStockItems = [
 const adminNavItems = [
   { title: "Variasi Global", href: "/variations", icon: Settings2 },
   { title: "Manajemen User", href: "/users", icon: Users },
+];
+
+const integrationNavItems = [
+  { title: "Telegram", href: "/telegram", icon: MessageCircle },
 ];
 
 export function Sidebar() {
@@ -155,6 +160,39 @@ export function Sidebar() {
             })}
           </>
         )}
+
+        <p className="px-3 pt-5 pb-2 text-[10px] font-semibold uppercase tracking-widest text-[#939084]">
+          Integrasi
+        </p>
+        {integrationNavItems.map((item) => {
+          const isActive =
+            pathname === item.href || pathname.startsWith(item.href + "/");
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={cn(
+                "flex items-center gap-3 px-3 py-2 rounded text-sm font-medium transition-colors",
+                isActive
+                  ? "bg-[#eceae3] text-[#201515]"
+                  : "text-[#36342e] hover:bg-[#eceae3] hover:text-[#201515]"
+              )}
+              style={
+                isActive
+                  ? { boxShadow: "rgb(255, 79, 0) -3px 0 0 0 inset" }
+                  : undefined
+              }
+            >
+              <item.icon
+                className={cn(
+                  "w-4 h-4 flex-shrink-0",
+                  isActive ? "text-[#ff4f00]" : "text-[#939084]"
+                )}
+              />
+              {item.title}
+            </Link>
+          );
+        })}
       </nav>
 
       {/* Footer */}

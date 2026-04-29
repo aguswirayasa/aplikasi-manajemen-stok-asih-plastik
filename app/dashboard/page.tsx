@@ -12,7 +12,6 @@ import {
 } from "lucide-react";
 import { authOptions } from "@/lib/auth";
 import { getDashboardData } from "@/lib/dashboard-data";
-import { TelegramLinkPanel } from "@/components/telegram/TelegramLinkPanel";
 
 export const dynamic = "force-dynamic";
 
@@ -111,8 +110,6 @@ export default async function DashboardPage() {
           icon={<ArrowUpRight className="h-5 w-5" />}
         />
       </section>
-
-      <TelegramLinkPanel />
 
       <section className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(340px,0.8fr)]">
         <div className="overflow-hidden rounded-[8px] border border-[#c5c0b1] bg-[#fffefb]">
