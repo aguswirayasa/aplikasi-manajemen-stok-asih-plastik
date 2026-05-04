@@ -92,6 +92,7 @@ export function SkuMatrixEditor({ product }: { product: SkuMatrixProduct }) {
                 .map((value) => value.variationValue.value)
                 .join(" - ");
               const isLowStock = variant.stock <= variant.minStock;
+              const isSaving = loading === variant.id;
 
               return (
                 <tr key={variant.id} className={`border-b border-[#c5c0b1] last:border-0 hover:bg-[#eceae3]/20 ${!variant.isActive ? "opacity-50 bg-[#eceae3]/50" : ""}`}>
@@ -103,6 +104,7 @@ export function SkuMatrixEditor({ product }: { product: SkuMatrixProduct }) {
                     <input
                       type="number"
                       value={variant.price}
+                      disabled={isSaving}
                       onChange={(event) =>
                         handleUpdate(variant.id, "price", parseInt(event.target.value, 10) || 0)
                       }
@@ -125,6 +127,7 @@ export function SkuMatrixEditor({ product }: { product: SkuMatrixProduct }) {
                     <input
                       type="number"
                       value={variant.minStock}
+                      disabled={isSaving}
                       onChange={(event) =>
                         handleUpdate(variant.id, "minStock", parseInt(event.target.value, 10) || 0)
                       }
@@ -138,6 +141,7 @@ export function SkuMatrixEditor({ product }: { product: SkuMatrixProduct }) {
                           type="checkbox"
                           className="sr-only"
                           checked={variant.isActive}
+                          disabled={isSaving}
                           onChange={(event) =>
                             handleUpdate(variant.id, "isActive", event.target.checked)
                           }
@@ -160,6 +164,7 @@ export function SkuMatrixEditor({ product }: { product: SkuMatrixProduct }) {
             .map((value) => value.variationValue.value)
             .join(" - ");
           const isLowStock = variant.stock <= variant.minStock;
+          const isSaving = loading === variant.id;
 
           return (
             <div key={variant.id} className={`p-4 border-b border-[#c5c0b1] last:border-0 ${!variant.isActive ? "opacity-50 bg-[#eceae3]/50" : ""}`}>
@@ -174,6 +179,7 @@ export function SkuMatrixEditor({ product }: { product: SkuMatrixProduct }) {
                       type="checkbox"
                       className="sr-only"
                       checked={variant.isActive}
+                      disabled={isSaving}
                       onChange={(event) =>
                         handleUpdate(variant.id, "isActive", event.target.checked)
                       }
@@ -190,6 +196,7 @@ export function SkuMatrixEditor({ product }: { product: SkuMatrixProduct }) {
                   <input
                     type="number"
                     value={variant.price}
+                    disabled={isSaving}
                     onChange={(event) =>
                       handleUpdate(variant.id, "price", parseInt(event.target.value, 10) || 0)
                     }
@@ -214,6 +221,7 @@ export function SkuMatrixEditor({ product }: { product: SkuMatrixProduct }) {
                   <input
                     type="number"
                     value={variant.minStock}
+                    disabled={isSaving}
                     onChange={(event) =>
                       handleUpdate(variant.id, "minStock", parseInt(event.target.value, 10) || 0)
                     }

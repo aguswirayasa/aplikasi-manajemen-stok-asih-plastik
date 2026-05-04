@@ -1,7 +1,7 @@
 "use client";
 
 import type { FormEvent, ReactNode } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   CheckCircle2,
   Edit,
@@ -61,7 +61,7 @@ export function UserManagementClient({
     editingUser.isActive &&
     activeAdminCount <= 1;
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
       const response = await fetch("/api/users");
       const data = await response.json();
@@ -78,11 +78,15 @@ export function UserManagementClient({
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    fetchUsers();
-  }, []);
+    async function loadUsers() {
+      await fetchUsers();
+    }
+
+    void loadUsers();
+  }, [fetchUsers]);
 
   const resetForm = () => {
     setIsFormOpen(false);

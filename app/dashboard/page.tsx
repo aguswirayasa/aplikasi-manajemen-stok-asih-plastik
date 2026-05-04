@@ -28,7 +28,7 @@ function formatVariation(
       value: string;
       variationType: { name: string };
     };
-  }[]
+  }[],
 ) {
   return (
     values
@@ -143,7 +143,7 @@ export default async function DashboardPage() {
                       {formatVariation(variant.values)}
                     </p>
                   </div>
-                  <div className="grid grid-cols-2 gap-2 sm:block sm:text-right">
+                  <div className="grid grid-cols-2 gap-2 space-y-2 sm:block sm:text-right">
                     <MiniMetric
                       label="Stok"
                       value={`${variant.stock}`}
@@ -309,12 +309,12 @@ function MiniMetric({
   urgent?: boolean;
 }) {
   return (
-    <div className="rounded-[5px] border border-[#c5c0b1] bg-[#fffefb] p-3 sm:border-0 sm:bg-transparent sm:p-0">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.5px] text-[#939084]">
+    <div className="flex justify-between items-center rounded-[5px] border border-[#c5c0b1] bg-[#fffefb] p-3 sm:border-0 sm:bg-transparent sm:p-0">
+      <p className="text-[11px]  font-semibold uppercase tracking-[0.5px] text-[#939084]">
         {label}
       </p>
       <p
-        className={`mt-1 text-[18px] font-bold leading-none ${
+        className={`mt-1 text-[18px]  font-bold leading-none ${
           urgent ? "text-[#ff4f00]" : "text-[#201515]"
         }`}
       >

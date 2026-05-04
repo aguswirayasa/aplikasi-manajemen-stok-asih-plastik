@@ -31,7 +31,7 @@ export default function LoginPage() {
         router.push(res?.url ?? "/dashboard");
         router.refresh();
       }
-    } catch (error) {
+    } catch {
       toast.error("Login gagal. Coba lagi.");
     } finally {
       setIsLoading(false);
@@ -40,7 +40,6 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen w-full flex-col items-center justify-center bg-[#fffefb] p-4 sm:p-8">
-      {/* Brand Header */}
       <div className="mb-8 flex flex-col items-center">
         <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-[8px] bg-[#ff4f00] text-[#fffefb]">
           <svg

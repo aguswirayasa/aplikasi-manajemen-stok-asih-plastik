@@ -4,7 +4,7 @@ import { ApiError, apiResponse, requireAdmin, withErrorHandler } from "@/lib/api
 import bcrypt from "bcryptjs";
 import { isUserRole } from "@/lib/user-roles";
 
-export const GET = withErrorHandler(async (_req: NextRequest) => {
+export const GET = withErrorHandler(async () => {
   await requireAdmin();
   const users = await prisma.user.findMany({
     select: {

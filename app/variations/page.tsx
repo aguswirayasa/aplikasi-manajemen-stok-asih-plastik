@@ -380,6 +380,7 @@ export default function VariationsPage() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Gagal memuat data");
       setTypes(json.data);
+      setError(null);
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : "Gagal memuat data");
     } finally {
@@ -387,7 +388,13 @@ export default function VariationsPage() {
     }
   }, []);
 
-  useEffect(() => { fetchTypes(); }, [fetchTypes]);
+  useEffect(() => {
+    async function loadTypes() {
+      await fetchTypes();
+    }
+
+    void loadTypes();
+  }, [fetchTypes]);
 
   const handleTypeRename = async (id: string, name: string) => {
     const res = await fetch(`/api/variations/types/${id}`, {
@@ -486,7 +493,7 @@ export default function VariationsPage() {
           <Tags className="w-10 h-10 text-[#c5c0b1] mb-4" />
           <h3 className="text-base font-semibold text-[#201515] mb-1">Belum ada tipe variasi</h3>
           <p className="text-sm text-[#939084] max-w-xs">
-            Tambahkan tipe variasi seperti "Warna", "Ukuran", atau "Ketebalan" untuk mulai mengorganisir produk Anda.
+            Tambahkan tipe variasi seperti &quot;Warna&quot;, &quot;Ukuran&quot;, atau &quot;Ketebalan&quot; untuk mulai mengorganisir produk Anda.
           </p>
           <button
             onClick={() => document.getElementById("btn-add-type")?.click()}

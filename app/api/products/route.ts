@@ -21,7 +21,7 @@ type ProductCreateBody = {
   defaultPrice?: unknown;
 };
 
-export const GET = withErrorHandler(async (_req: NextRequest) => {
+export const GET = withErrorHandler(async () => {
   await requireAuth();
 
   const products = await prisma.product.findMany({

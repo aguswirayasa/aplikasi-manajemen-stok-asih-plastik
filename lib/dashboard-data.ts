@@ -49,7 +49,7 @@ export async function getDashboardData() {
         },
       },
       orderBy: [{ stock: "asc" }, { sku: "asc" }],
-      take: 10,
+      take: 5,
     }),
     prisma.stockIn.aggregate({
       where: { createdAt: { gte: today } },
