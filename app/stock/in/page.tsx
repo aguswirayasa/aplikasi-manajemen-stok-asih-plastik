@@ -3,17 +3,13 @@
 import { useRouter } from "next/navigation";
 import { FormEvent, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { PackagePlus, Save, Trash2 } from "lucide-react";
+import { PackagePlus, Save } from "lucide-react";
+import { StockInLine } from "@/components/stock/StockInLine";
+import type { StockLine } from "@/types/stock";
 import {
   StockVariantOption,
   VariantSelect,
 } from "@/components/stock/VariantSelect";
-
-type StockLine = {
-  lineId: string;
-  variant: StockVariantOption;
-  quantity: number | "";
-};
 
 function newLine(variant: StockVariantOption): StockLine {
   return {
@@ -152,68 +148,13 @@ export default function StockInPage() {
               </div>
             ) : (
               lines.map((line, index) => (
-                <article
+                <StockInLine
                   key={line.lineId}
-                  className="grid gap-4 rounded-[8px] border border-[#c5c0b1] bg-[#eceae3]/30 p-4 md:grid-cols-[minmax(0,1fr)_130px_130px_44px] md:items-center"
-                >
-                  <div className="min-w-0">
-                    <p className="text-[12px] font-semibold uppercase tracking-[0.5px] text-[#939084]">
-                      Item {index + 1}
-                    </p>
-                    <p className="mt-1 truncate text-[16px] font-bold text-[#201515]">
-                      {line.variant.sku}
-                    </p>
-                    <p className="truncate text-[13px] text-[#36342e]">
-                      {line.variant.productName}
-                    </p>
-                    {line.variant.variationString && (
-                      <p className="truncate text-[13px] text-[#939084]">
-                        {line.variant.variationString}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="rounded-[5px] border border-[#c5c0b1] bg-[#fffefb] p-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.5px] text-[#939084]">
-                      Stok saat ini
-                    </p>
-                    <p className="mt-1 text-[24px] font-bold leading-none text-[#201515]">
-                      {line.variant.stock}
-                    </p>
-                  </div>
-
-                  <div>
-                    <label className="mb-2 block text-[13px] font-bold text-[#201515] md:sr-only">
-                      Jumlah masuk
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      inputMode="numeric"
-                      required
-                      value={line.quantity}
-                      onChange={(event) =>
-                        updateQuantity(
-                          line.lineId,
-                          event.target.value === ""
-                            ? ""
-                            : Number(event.target.value)
-                        )
-                      }
-                      className="min-h-12 w-full rounded-[5px] border border-[#c5c0b1] bg-[#fffefb] px-3 text-[18px] font-semibold text-[#201515] outline-none focus:border-[#ff4f00]"
-                      placeholder="Qty"
-                    />
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => removeLine(line.lineId)}
-                    className="flex min-h-11 items-center justify-center rounded-[5px] border border-[#c5c0b1] bg-[#fffefb] text-[#939084] hover:bg-[#eceae3] hover:text-[#ff4f00]"
-                    aria-label={`Hapus ${line.variant.sku}`}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </article>
+                  index={index}
+                  line={line}
+                  onQuantityChange={updateQuantity}
+                  onRemove={removeLine}
+                />
               ))
             )}
           </section>
