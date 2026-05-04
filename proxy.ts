@@ -27,14 +27,11 @@ export default withAuth(
           "/variations",
           "/users",
         ];
-        const adminPrefixes = [
-          "/stock/in",
-          "/stock/history",
-          "/products/new",
-          "/products/",
-          "/variations",
-          "/users",
-        ];
+        const adminPrefixes = ["/stock/in", "/stock/history", "/variations", "/users"];
+        const isProductAdminRoute =
+          req.nextUrl.pathname === "/products/new" ||
+          (req.nextUrl.pathname.startsWith("/products/") &&
+            req.nextUrl.pathname.endsWith("/edit"));
         const isProtected = protectedPrefixes.some((prefix) =>
           req.nextUrl.pathname.startsWith(prefix)
         );
@@ -42,7 +39,7 @@ export default withAuth(
           req.nextUrl.pathname.startsWith(prefix)
         );
 
-        if (isAdminOnly) {
+        if (isAdminOnly || isProductAdminRoute) {
           return token?.role === "ADMIN";
         }
 

@@ -15,8 +15,13 @@ import {
 } from "@/components/stock/VariantSelect";
 
 function newLine(variant: StockVariantOption): StockLine {
+  const randomPart =
+    typeof globalThis.crypto?.randomUUID === "function"
+      ? globalThis.crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
   return {
-    lineId: `${variant.id}-${crypto.randomUUID()}`,
+    lineId: `${variant.id}-${randomPart}`,
     variant,
     quantity: 1,
   };

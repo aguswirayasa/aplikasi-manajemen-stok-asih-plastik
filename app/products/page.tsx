@@ -1,19 +1,29 @@
 import Link from "next/link";
 import prisma from "@/lib/prisma";
-import { Plus, Edit2, AlertCircle } from "lucide-react";
+import { Edit2, Eye, Plus } from "lucide-react";
 import { ProductCard } from "@/components/products/ProductCard";
+import { ProductStockStatus } from "@/components/products/ProductStockStatus";
 import { requirePageAuth } from "@/lib/page-auth";
 import { getProductSummary } from "@/lib/product-summary";
 
 export const dynamic = "force-dynamic";
 
 export default async function ProductsPage() {
-  await requirePageAuth();
+  const user = await requirePageAuth();
+  const canEditProducts = user.role === "ADMIN";
 
   const products = await prisma.product.findMany({
     include: {
       category: true,
-      variants: true,
+      variants: {
+        include: {
+          values: {
+            include: {
+              variationValue: true,
+            },
+          },
+        },
+      },
     },
     orderBy: { name: 'asc' }
   });
@@ -30,9 +40,11 @@ export default async function ProductsPage() {
               Kelola katalog produk dan ringkasan stok.
             </p>
           </div>
-          <Link href="/products/new" className="px-6 py-2.5 bg-[#ff4f00] text-[#fffefb] rounded-[4px] font-semibold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity w-full md:w-auto">
-            <Plus className="w-5 h-5" /> Produk Baru
-          </Link>
+          {canEditProducts && (
+            <Link href="/products/new" className="px-6 py-2.5 bg-[#ff4f00] text-[#fffefb] rounded-[4px] font-semibold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity w-full md:w-auto">
+              <Plus className="w-5 h-5" /> Produk Baru
+            </Link>
+          )}
         </header>
 
         <div className="hidden md:block bg-[#fffefb] border border-[#c5c0b1] rounded-[8px] overflow-hidden">
@@ -49,7 +61,7 @@ export default async function ProductsPage() {
             </thead>
             <tbody>
               {products.map(product => {
-                const { totalVariants, totalStock, hasLowStock } =
+                const { totalVariants, totalStock, stockStatus } =
                   getProductSummary(product);
 
                 return (
@@ -59,20 +71,27 @@ export default async function ProductsPage() {
                     <td className="p-4 text-[#36342e]">{totalVariants} SKUs</td>
                     <td className="p-4 text-[#36342e] font-semibold">{totalStock}</td>
                     <td className="p-4">
-                      {hasLowStock ? (
-                        <span className="inline-flex items-center gap-1.5 text-[14px] font-semibold text-[#ff4f00] bg-[#ff4f00]/10 px-2.5 py-1 rounded-[20px]">
-                          <AlertCircle className="w-4 h-4" /> Stok Rendah
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1.5 text-[14px] font-medium text-[#939084]">
-                          Stok Aman
-                        </span>
-                      )}
+                      <ProductStockStatus status={stockStatus} />
                     </td>
                     <td className="p-4 text-right">
-                      <Link href={`/products/${product.id}`} className="inline-flex items-center gap-2 px-3 py-1.5 border border-[#c5c0b1] rounded-[4px] text-[14px] font-semibold text-[#201515] hover:bg-[#eceae3] transition-colors">
-                        <Edit2 className="w-4 h-4" /> Edit
-                      </Link>
+                      <div className="inline-flex items-center justify-end gap-2">
+                        <Link
+                          href={`/products/${product.id}`}
+                          aria-label={`Lihat detail ${product.name}`}
+                          className="inline-flex items-center gap-2 px-3 py-1.5 border border-[#c5c0b1] rounded-[4px] text-[14px] font-semibold text-[#201515] hover:bg-[#eceae3] transition-colors"
+                        >
+                          <Eye className="w-4 h-4" /> Detail
+                        </Link>
+                        {canEditProducts && (
+                          <Link
+                            href={`/products/${product.id}/edit`}
+                            aria-label={`Edit ${product.name}`}
+                            className="inline-flex items-center gap-2 px-3 py-1.5 border border-[#c5c0b1] rounded-[4px] text-[14px] font-semibold text-[#201515] hover:bg-[#eceae3] transition-colors"
+                          >
+                            <Edit2 className="w-4 h-4" /> Edit
+                          </Link>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
@@ -89,7 +108,13 @@ export default async function ProductsPage() {
         </div>
 
         <div className="md:hidden space-y-4">
-          {products.map(product => <ProductCard key={product.id} product={product} />)}
+          {products.map(product => (
+            <ProductCard
+              key={product.id}
+              product={product}
+              canEdit={canEditProducts}
+            />
+          ))}
           {products.length === 0 && (
             <div className="p-8 text-center text-[#939084] italic border border-dashed border-[#c5c0b1] rounded-[8px]">
               Belum ada produk.

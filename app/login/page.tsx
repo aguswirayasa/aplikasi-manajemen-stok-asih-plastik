@@ -28,7 +28,7 @@ export default function LoginPage() {
         toast.error("Login gagal. Periksa username dan password.");
       } else {
         toast.success("Login berhasil.");
-        router.push(res?.url ?? "/dashboard");
+        router.push("/dashboard");
         router.refresh();
       }
     } catch {
