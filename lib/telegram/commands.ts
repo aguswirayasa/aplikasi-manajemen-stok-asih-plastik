@@ -101,7 +101,7 @@ async function buildCommandReply(
 ) {
   try {
     if (command.kind === "link") {
-      return handleLinkCommand(command.token, message);
+      return await handleLinkCommand(command.token, message);
     }
 
     if (command.kind === "logout") {
@@ -122,17 +122,17 @@ async function buildCommandReply(
       case "me":
         return `Terhubung sebagai ${formatLinkedUser(user)}.`;
       case "lowstock":
-        return buildLowStockMessage();
+        return await buildLowStockMessage();
       case "report":
         assertAdmin(user);
-        return buildDailyReportMessage();
+        return await buildDailyReportMessage();
       case "lookup":
-        return handleLookupCommand(command.sku);
+        return await handleLookupCommand(command.sku);
       case "stockIn":
         assertAdmin(user);
-        return handleStockInCommand(user, command);
+        return await handleStockInCommand(user, command);
       case "stockOut":
-        return handleStockOutCommand(user, command);
+        return await handleStockOutCommand(user, command);
       default:
         return helpMessage;
     }

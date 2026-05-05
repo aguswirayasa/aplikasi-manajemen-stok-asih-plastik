@@ -9,20 +9,16 @@ export function StockOutSummary({
   totalQuantity,
   totalAmount,
   hasOverStock,
-  note,
   loading,
   submitDisabled,
-  onNoteChange,
   onClearCart,
 }: {
   lineCount: number;
   totalQuantity: number;
   totalAmount: number;
   hasOverStock: boolean;
-  note: string;
   loading: boolean;
   submitDisabled: boolean;
-  onNoteChange: (note: string) => void;
   onClearCart: () => void;
 }) {
   return (
@@ -58,18 +54,6 @@ export function StockOutSummary({
               Ada item yang jumlahnya melebihi stok tersedia.
             </div>
           )}
-
-          <div>
-            <label className="mb-2 block text-[14px] font-bold text-[#201515]">
-              Catatan transaksi
-            </label>
-            <textarea
-              value={note}
-              onChange={(event) => onNoteChange(event.target.value)}
-              className="min-h-24 w-full rounded-[5px] border border-[#c5c0b1] bg-[#fffefb] px-3 py-3 text-[15px] text-[#201515] outline-none placeholder:text-[#939084] focus:border-[#ff4f00]"
-              placeholder="Contoh: penjualan kasir sore"
-            />
-          </div>
         </div>
 
         <div className="sticky bottom-16 border-t border-[#c5c0b1] bg-[#fffefb] p-4 lg:static">

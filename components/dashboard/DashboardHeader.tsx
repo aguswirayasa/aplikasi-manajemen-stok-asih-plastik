@@ -14,8 +14,6 @@ export function DashboardHeader({ displayName }: { displayName: string }) {
         <p className="mt-2 max-w-[640px] text-[15px] leading-[1.25] text-[#36342e]">
           Selamat datang,{" "}
           <span className="font-bold text-[#201515]">{displayName}</span>.
-          Pantau SKU aktif, pergerakan hari ini, dan stok yang perlu
-          ditindaklanjuti.
         </p>
       </div>
       <Link

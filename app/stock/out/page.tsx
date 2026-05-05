@@ -14,6 +14,8 @@ import {
   VariantSelect,
 } from "@/components/stock/VariantSelect";
 
+const CASHIER_SALE_NOTE = "Transaksi penjualan kasir";
+
 function newLine(variant: StockVariantOption): StockLine {
   const randomPart =
     typeof globalThis.crypto?.randomUUID === "function"
@@ -31,29 +33,30 @@ export default function StockOutPage() {
   const router = useRouter();
   const { data: session } = useSession();
   const [lines, setLines] = useState<StockLine[]>([]);
-  const [note, setNote] = useState("");
   const [loading, setLoading] = useState(false);
 
   const hasInvalidQuantity = lines.some(
-    (line) => typeof line.quantity !== "number" || line.quantity <= 0
+    (line) => typeof line.quantity !== "number" || line.quantity <= 0,
   );
   const hasOverStock = lines.some(
     (line) =>
-      typeof line.quantity === "number" && line.quantity > line.variant.stock
+      typeof line.quantity === "number" && line.quantity > line.variant.stock,
   );
   const totals = useMemo(
     () =>
       lines.reduce(
         (summary, line) => {
-          const quantity = typeof line.quantity === "number" ? line.quantity : 0;
+          const quantity =
+            typeof line.quantity === "number" ? line.quantity : 0;
           return {
             quantity: summary.quantity + quantity,
-            amount: summary.amount + quantity * getStockVariantPrice(line.variant),
+            amount:
+              summary.amount + quantity * getStockVariantPrice(line.variant),
           };
         },
-        { quantity: 0, amount: 0 }
+        { quantity: 0, amount: 0 },
       ),
-    [lines]
+    [lines],
   );
 
   const cashierName =
@@ -67,7 +70,7 @@ export default function StockOutPage() {
         existingLine.lineId,
         typeof existingLine.quantity === "number"
           ? existingLine.quantity + 1
-          : 1
+          : 1,
       );
       toast.success("Jumlah SKU ditambah.");
       return;
@@ -79,8 +82,8 @@ export default function StockOutPage() {
   const updateQuantity = (lineId: string, quantity: number | "") => {
     setLines((current) =>
       current.map((line) =>
-        line.lineId === lineId ? { ...line, quantity } : line
-      )
+        line.lineId === lineId ? { ...line, quantity } : line,
+      ),
     );
   };
 
@@ -90,7 +93,6 @@ export default function StockOutPage() {
 
   const clearCart = () => {
     setLines([]);
-    setNote("");
   };
 
   const handleSubmit = async (event: FormEvent) => {
@@ -122,7 +124,7 @@ export default function StockOutPage() {
             variantId: line.variant.id,
             quantity: line.quantity,
           })),
-          note: note.trim() || undefined,
+          note: CASHIER_SALE_NOTE,
         }),
       });
 
@@ -133,11 +135,13 @@ export default function StockOutPage() {
       }
 
       toast.success(data.message || "Transaksi kasir berhasil dicatat.");
-      router.push("/dashboard");
+      clearCart();
       router.refresh();
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Gagal mencatat transaksi kasir."
+        error instanceof Error
+          ? error.message
+          : "Gagal mencatat transaksi kasir.",
       );
     } finally {
       setLoading(false);
@@ -191,7 +195,8 @@ export default function StockOutPage() {
                   Cart masih kosong
                 </p>
                 <p className="mt-1 text-[13px] text-[#939084]">
-                  Cari SKU atau nama produk, lalu pilih item untuk mulai checkout.
+                  Cari SKU atau nama produk, lalu pilih item untuk mulai
+                  checkout.
                 </p>
               </div>
             ) : (
@@ -215,12 +220,10 @@ export default function StockOutPage() {
           totalQuantity={totals.quantity}
           totalAmount={totals.amount}
           hasOverStock={hasOverStock}
-          note={note}
           loading={loading}
           submitDisabled={
             loading || lines.length === 0 || hasInvalidQuantity || hasOverStock
           }
-          onNoteChange={setNote}
           onClearCart={clearCart}
         />
       </div>

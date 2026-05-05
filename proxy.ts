@@ -40,7 +40,7 @@ export default withAuth(
         );
 
         if (isAdminOnly || isProductAdminRoute) {
-          return token?.role === "ADMIN";
+          return !!token;
         }
 
         if (isProtected) {

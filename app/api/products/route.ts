@@ -9,7 +9,7 @@ import {
 } from "@/lib/api-helpers";
 import {
   createProductVariants,
-  parseVariationCombinations,
+  parseProductVariantInputs,
 } from "@/lib/product-variant-creation";
 
 type ProductCreateBody = {
@@ -17,8 +17,7 @@ type ProductCreateBody = {
   categoryId?: unknown;
   description?: unknown;
   variationTypeIds?: unknown;
-  combinations?: unknown;
-  defaultPrice?: unknown;
+  variants?: unknown;
 };
 
 export const GET = withErrorHandler(async () => {
@@ -46,7 +45,7 @@ export const GET = withErrorHandler(async () => {
 });
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
-  await requireAdmin();
+  const user = await requireAdmin();
 
   const body = (await req.json()) as ProductCreateBody;
   const { name, categoryId, description, variationTypeIds } = body;
@@ -60,11 +59,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   }
 
   const selectedVariationTypeIds = parseVariationTypeIds(variationTypeIds);
-  const defaultPrice = parseDefaultPrice(body.defaultPrice);
-  const combinations =
-    body.combinations === undefined
-      ? undefined
-      : parseVariationCombinations(body.combinations);
+  const variants = parseProductVariantInputs(body.variants);
 
   const product = await prisma.$transaction(async (tx) => {
     const category = await tx.category.findUnique({
@@ -104,9 +99,9 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       },
     });
 
-    if (combinations) {
-      await createProductVariants(tx, createdProduct, combinations, defaultPrice);
-    }
+    await createProductVariants(tx, createdProduct, variants, {
+      initialStockUserId: user.id,
+    });
 
     return createdProduct;
   });
@@ -124,18 +119,4 @@ function parseVariationTypeIds(value: unknown) {
   }
 
   return [...new Set(value)];
-}
-
-function parseDefaultPrice(value: unknown) {
-  if (value === undefined || value === null || value === "") {
-    return 0;
-  }
-
-  const price = Number(value);
-
-  if (!Number.isFinite(price) || price < 0) {
-    throw new ApiError("Harga default tidak valid.", 400);
-  }
-
-  return price;
 }

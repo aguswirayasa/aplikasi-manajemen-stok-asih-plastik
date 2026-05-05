@@ -1,7 +1,5 @@
-import { getServerSession } from "next-auth";
-import { redirect } from "next/navigation";
 import { StockHistoryView } from "@/components/stock/StockHistoryView";
-import { authOptions } from "@/lib/auth";
+import { requirePageAdmin } from "@/lib/page-auth";
 import prisma from "@/lib/prisma";
 import {
   mergeStockTransactions,
@@ -11,15 +9,7 @@ import {
 export const dynamic = "force-dynamic";
 
 export default async function StockHistoryPage() {
-  const session = await getServerSession(authOptions);
-
-  if (!session) {
-    redirect("/login");
-  }
-
-  if (session.user.role !== "ADMIN") {
-    redirect("/dashboard");
-  }
+  await requirePageAdmin();
 
   const [stockIns, stockOuts] = await Promise.all([
     prisma.stockIn.findMany({

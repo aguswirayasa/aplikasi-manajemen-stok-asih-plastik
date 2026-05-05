@@ -4,7 +4,16 @@ import { generateSkuString } from "@/lib/sku-generator";
 
 export type VariationCombinationsInput = Record<string, string[]>;
 
+export type ProductVariantCreationInput = {
+  valueIds: string[];
+  price: number;
+  stock: number;
+  minStock: number;
+};
+
 type ProductForVariantCreation = Pick<Product, "id" | "name">;
+
+const INITIAL_STOCK_NOTE = "Stok awal dari wizard produk";
 
 export function parseVariationCombinations(input: unknown): VariationCombinationsInput {
   if (!input || typeof input !== "object" || Array.isArray(input)) {
@@ -31,11 +40,47 @@ export function parseVariationCombinations(input: unknown): VariationCombination
   return combinations;
 }
 
+export function parseProductVariantInputs(input: unknown) {
+  if (!Array.isArray(input) || input.length === 0) {
+    throw new ApiError("Pilih minimal satu kombinasi SKU.", 400);
+  }
+
+  return input.map((item) => {
+    if (!isRecord(item)) {
+      throw new ApiError("Data SKU tidak valid.", 400);
+    }
+
+    if (!Array.isArray(item.valueIds) || item.valueIds.length === 0) {
+      throw new ApiError("Kombinasi nilai SKU tidak valid.", 400);
+    }
+
+    const valueIds = [...new Set(item.valueIds)];
+
+    if (valueIds.length !== item.valueIds.length) {
+      throw new ApiError("Kombinasi nilai SKU duplikat.", 400);
+    }
+
+    if (valueIds.some((valueId) => typeof valueId !== "string")) {
+      throw new ApiError("Nilai variasi SKU tidak valid.", 400);
+    }
+
+    return {
+      valueIds,
+      price: parseNonNegativeNumber(item.price, "Harga SKU tidak valid."),
+      stock: parseNonNegativeInteger(item.stock, "Stok awal SKU tidak valid."),
+      minStock: parseNonNegativeInteger(
+        item.minStock,
+        "Minimal stok SKU tidak valid."
+      ),
+    };
+  });
+}
+
 export async function createProductVariants(
   tx: Prisma.TransactionClient,
   product: ProductForVariantCreation,
-  combinations: VariationCombinationsInput,
-  defaultPrice: number
+  variants: ProductVariantCreationInput[],
+  options: { initialStockUserId?: string } = {}
 ): Promise<ProductVariant[]> {
   const productVariationTypes = await tx.productVariationType.findMany({
     where: { productId: product.id },
@@ -43,43 +88,42 @@ export async function createProductVariants(
     select: { variationTypeId: true },
   });
   const orderedTypeIds = productVariationTypes.map((item) => item.variationTypeId);
-  const selectedTypeIds = orderedTypeIds.filter(
-    (typeId) => (combinations[typeId]?.length ?? 0) > 0
-  );
 
-  if (Object.keys(combinations).some((typeId) => !orderedTypeIds.includes(typeId))) {
-    throw new ApiError("Kombinasi variasi tidak sesuai dengan produk.", 400);
+  if (orderedTypeIds.length === 0) {
+    throw new ApiError("Produk belum memiliki tipe variasi.", 400);
   }
 
-  if (selectedTypeIds.length === 0) {
-    return [];
-  }
-
-  const allValueIds = selectedTypeIds.flatMap((typeId) => combinations[typeId]);
+  const allValueIds = variants.flatMap((variant) => variant.valueIds);
   const valuesData = await tx.variationValue.findMany({
     where: { id: { in: allValueIds } },
     select: { id: true, value: true, variationTypeId: true },
   });
 
-  if (valuesData.length !== allValueIds.length) {
+  if (valuesData.length !== new Set(allValueIds).size) {
     throw new ApiError("Sebagian nilai variasi tidak ditemukan.", 404);
   }
 
   const valueMap = new Map(valuesData.map((value) => [value.id, value]));
-
-  for (const typeId of selectedTypeIds) {
-    for (const valueId of combinations[typeId]) {
-      const value = valueMap.get(valueId);
-      if (!value || value.variationTypeId !== typeId) {
-        throw new ApiError("Nilai variasi tidak sesuai dengan tipe variasinya.", 400);
-      }
-    }
-  }
-
+  const seenCombinationKeys = new Set<string>();
   const createdVariants: ProductVariant[] = [];
 
-  for (const valueIds of buildCombinationRows(selectedTypeIds, combinations)) {
-    const valueNames = valueIds.map((valueId) => valueMap.get(valueId)?.value ?? "");
+  for (const variantInput of variants) {
+    const orderedValueIds = orderAndValidateValueIds(
+      variantInput.valueIds,
+      orderedTypeIds,
+      valueMap
+    );
+    const combinationKey = orderedValueIds.join("|");
+
+    if (seenCombinationKeys.has(combinationKey)) {
+      throw new ApiError("Kombinasi SKU duplikat.", 400);
+    }
+
+    seenCombinationKeys.add(combinationKey);
+
+    const valueNames = orderedValueIds.map(
+      (valueId) => valueMap.get(valueId)?.value ?? ""
+    );
     const skuBase = generateSkuString(product.name, valueNames);
     const sku = await getAvailableSku(tx, skuBase);
 
@@ -87,19 +131,94 @@ export async function createProductVariants(
       data: {
         productId: product.id,
         sku,
-        price: defaultPrice,
+        price: variantInput.price,
+        minStock: variantInput.minStock,
         values: {
-          create: valueIds.map((variationValueId) => ({
+          create: orderedValueIds.map((variationValueId) => ({
             variationValueId,
           })),
         },
       },
     });
 
-    createdVariants.push(variant);
+    if (variantInput.stock > 0) {
+      if (!options.initialStockUserId) {
+        throw new ApiError("User pencatat stok awal tidak valid.", 400);
+      }
+
+      await tx.stockIn.create({
+        data: {
+          variantId: variant.id,
+          quantity: variantInput.stock,
+          note: INITIAL_STOCK_NOTE,
+          userId: options.initialStockUserId,
+        },
+      });
+      await tx.productVariant.update({
+        where: { id: variant.id },
+        data: { stock: { increment: variantInput.stock } },
+      });
+    }
+
+    createdVariants.push({
+      ...variant,
+      stock: variantInput.stock,
+    });
   }
 
   return createdVariants;
+}
+
+export function variantInputsFromCombinations(
+  combinations: VariationCombinationsInput,
+  defaultPrice: number
+): ProductVariantCreationInput[] {
+  const typeIds = Object.keys(combinations).filter(
+    (typeId) => combinations[typeId].length > 0
+  );
+
+  if (typeIds.length === 0) {
+    return [];
+  }
+
+  return buildCombinationRows(typeIds, combinations).map((valueIds) => ({
+    valueIds,
+    price: defaultPrice,
+    stock: 0,
+    minStock: 0,
+  }));
+}
+
+function orderAndValidateValueIds(
+  valueIds: string[],
+  orderedTypeIds: string[],
+  valueMap: Map<string, { id: string; value: string; variationTypeId: string }>
+) {
+  const valueByTypeId = new Map<string, string>();
+
+  for (const valueId of valueIds) {
+    const value = valueMap.get(valueId);
+
+    if (!value) {
+      throw new ApiError("Sebagian nilai variasi tidak ditemukan.", 404);
+    }
+
+    if (!orderedTypeIds.includes(value.variationTypeId)) {
+      throw new ApiError("Nilai variasi tidak sesuai dengan produk.", 400);
+    }
+
+    if (valueByTypeId.has(value.variationTypeId)) {
+      throw new ApiError("Satu tipe variasi hanya boleh punya satu nilai per SKU.", 400);
+    }
+
+    valueByTypeId.set(value.variationTypeId, valueId);
+  }
+
+  if (valueByTypeId.size !== orderedTypeIds.length) {
+    throw new ApiError("Kombinasi SKU belum lengkap.", 400);
+  }
+
+  return orderedTypeIds.map((typeId) => valueByTypeId.get(typeId) ?? "");
 }
 
 function buildCombinationRows(
@@ -128,7 +247,10 @@ function buildCombinationRows(
 
 async function getAvailableSku(tx: Prisma.TransactionClient, skuBase: string) {
   for (let attempt = 0; attempt < 100; attempt += 1) {
-    const sku = attempt === 0 ? skuBase : `${skuBase}-${String(attempt + 1).padStart(2, "0")}`;
+    const sku =
+      attempt === 0
+        ? skuBase
+        : `${skuBase}-${String(attempt + 1).padStart(2, "0")}`;
     const existing = await tx.productVariant.findUnique({ where: { sku } });
 
     if (!existing) {
@@ -137,4 +259,40 @@ async function getAvailableSku(tx: Prisma.TransactionClient, skuBase: string) {
   }
 
   throw new ApiError("SKU unik tidak bisa dibuat. Ubah nama produk atau variasi.", 409);
+}
+
+function parseNonNegativeInteger(value: unknown, message: string) {
+  const parsed = parseNumberLike(value);
+
+  if (!Number.isInteger(parsed) || parsed < 0) {
+    throw new ApiError(message, 400);
+  }
+
+  return parsed;
+}
+
+function parseNonNegativeNumber(value: unknown, message: string) {
+  const parsed = parseNumberLike(value);
+
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    throw new ApiError(message, 400);
+  }
+
+  return parsed;
+}
+
+function parseNumberLike(value: unknown) {
+  if (typeof value === "number") {
+    return value;
+  }
+
+  if (typeof value === "string" && value.trim().length > 0) {
+    return Number(value);
+  }
+
+  return Number.NaN;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

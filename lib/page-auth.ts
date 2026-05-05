@@ -1,5 +1,5 @@
 import { getServerSession } from "next-auth";
-import { redirect } from "next/navigation";
+import { forbidden, redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 
 export async function requirePageAuth() {
@@ -16,7 +16,7 @@ export async function requirePageAdmin() {
   const user = await requirePageAuth();
 
   if (user.role !== "ADMIN") {
-    redirect("/dashboard");
+    forbidden();
   }
 
   return user;

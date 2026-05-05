@@ -9,6 +9,7 @@ import {
 import {
   createProductVariants,
   parseVariationCombinations,
+  variantInputsFromCombinations,
 } from "@/lib/product-variant-creation";
 
 type VariantCreateBody = {
@@ -37,7 +38,11 @@ export const POST = withErrorHandler(async (
       throw new ApiError("Produk tidak ditemukan.", 404);
     }
 
-    return createProductVariants(tx, product, combinations, defaultPrice);
+    return createProductVariants(
+      tx,
+      product,
+      variantInputsFromCombinations(combinations, defaultPrice)
+    );
   });
 
   return apiResponse(createdVariants, 201);
