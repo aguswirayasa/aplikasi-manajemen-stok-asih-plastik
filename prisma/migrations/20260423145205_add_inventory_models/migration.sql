@@ -1,17 +1,3 @@
-/*
-  Warnings:
-
-  - You are about to drop the column `category` on the `Product` table. All the data in the column will be lost.
-  - You are about to drop the column `minStockAlert` on the `ProductVariant` table. All the data in the column will be lost.
-  - You are about to alter the column `price` on the `ProductVariant` table. The data in that column could be lost. The data in that column will be cast from `Decimal(10,2)` to `Decimal(12,2)`.
-  - You are about to drop the `Attribute` table. If the table is not empty, all the data it contains will be lost.
-  - You are about to drop the `AttributeOption` table. If the table is not empty, all the data it contains will be lost.
-  - You are about to drop the `InventoryMovement` table. If the table is not empty, all the data it contains will be lost.
-  - You are about to drop the `VariantOptionValue` table. If the table is not empty, all the data it contains will be lost.
-  - Added the required column `categoryId` to the `Product` table without a default value. This is not possible if the table is not empty.
-  - Added the required column `updatedAt` to the `ProductVariant` table without a default value. This is not possible if the table is not empty.
-
-*/
 -- DropForeignKey
 ALTER TABLE `Attribute` DROP FOREIGN KEY `Attribute_productId_fkey`;
 
@@ -29,32 +15,6 @@ ALTER TABLE `VariantOptionValue` DROP FOREIGN KEY `VariantOptionValue_attributeO
 
 -- DropForeignKey
 ALTER TABLE `VariantOptionValue` DROP FOREIGN KEY `VariantOptionValue_variantId_fkey`;
-
--- AlterTable
-ALTER TABLE `Product` DROP COLUMN `category`,
-    ADD COLUMN `categoryId` VARCHAR(191) NOT NULL,
-    ADD COLUMN `image` VARCHAR(191) NULL,
-    MODIFY `description` VARCHAR(191) NULL;
-
--- AlterTable
-ALTER TABLE `ProductVariant` DROP COLUMN `minStockAlert`,
-    ADD COLUMN `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-    ADD COLUMN `isActive` BOOLEAN NOT NULL DEFAULT true,
-    ADD COLUMN `minStock` INTEGER NOT NULL DEFAULT 0,
-    ADD COLUMN `updatedAt` DATETIME(3) NOT NULL,
-    MODIFY `price` DECIMAL(12, 2) NOT NULL;
-
--- DropTable
-DROP TABLE `Attribute`;
-
--- DropTable
-DROP TABLE `AttributeOption`;
-
--- DropTable
-DROP TABLE `InventoryMovement`;
-
--- DropTable
-DROP TABLE `VariantOptionValue`;
 
 -- CreateTable
 CREATE TABLE `Category` (
@@ -141,6 +101,135 @@ CREATE TABLE `StockOut` (
     INDEX `StockOut_createdAt_idx`(`createdAt`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- Kategori lama disalin sebelum kolom `Product.category` dihapus.
+INSERT INTO `Category` (`id`, `name`, `createdAt`, `updatedAt`)
+SELECT UUID(), `source`.`categoryName`, CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)
+FROM (
+    SELECT DISTINCT COALESCE(NULLIF(TRIM(`category`), ''), 'Tanpa Kategori') AS `categoryName`
+    FROM `Product`
+) AS `source`
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM `Category` AS `existing`
+    WHERE `existing`.`name` = `source`.`categoryName`
+);
+
+-- AlterTable
+ALTER TABLE `Product`
+    ADD COLUMN `categoryId` VARCHAR(191) NULL,
+    ADD COLUMN `image` VARCHAR(191) NULL,
+    MODIFY `description` VARCHAR(191) NULL;
+
+UPDATE `Product` AS `product`
+INNER JOIN `Category` AS `category`
+    ON `category`.`name` = COALESCE(NULLIF(TRIM(`product`.`category`), ''), 'Tanpa Kategori')
+SET `product`.`categoryId` = `category`.`id`
+WHERE `product`.`categoryId` IS NULL;
+
+ALTER TABLE `Product`
+    MODIFY `categoryId` VARCHAR(191) NOT NULL,
+    DROP COLUMN `category`;
+
+-- AlterTable
+ALTER TABLE `ProductVariant`
+    ADD COLUMN `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    ADD COLUMN `isActive` BOOLEAN NOT NULL DEFAULT true,
+    ADD COLUMN `minStock` INTEGER NOT NULL DEFAULT 0,
+    ADD COLUMN `updatedAt` DATETIME(3) NULL,
+    MODIFY `price` DECIMAL(12, 2) NOT NULL;
+
+UPDATE `ProductVariant`
+SET `minStock` = `minStockAlert`;
+
+UPDATE `ProductVariant`
+SET `updatedAt` = CURRENT_TIMESTAMP(3)
+WHERE `updatedAt` IS NULL;
+
+ALTER TABLE `ProductVariant`
+    MODIFY `updatedAt` DATETIME(3) NOT NULL,
+    DROP COLUMN `minStockAlert`;
+
+-- Data atribut lama dipindahkan ke struktur variasi baru.
+INSERT INTO `VariationType` (`id`, `name`, `createdAt`, `updatedAt`)
+SELECT UUID(), `source`.`name`, CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)
+FROM (
+    SELECT DISTINCT `name`
+    FROM `Attribute`
+) AS `source`
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM `VariationType` AS `existing`
+    WHERE `existing`.`name` = `source`.`name`
+);
+
+INSERT INTO `VariationValue` (`id`, `value`, `variationTypeId`, `createdAt`, `updatedAt`)
+SELECT UUID(), `source`.`value`, `source`.`variationTypeId`, CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)
+FROM (
+    SELECT DISTINCT `option`.`value`, `type`.`id` AS `variationTypeId`
+    FROM `AttributeOption` AS `option`
+    INNER JOIN `Attribute` AS `attribute` ON `attribute`.`id` = `option`.`attributeId`
+    INNER JOIN `VariationType` AS `type` ON `type`.`name` = `attribute`.`name`
+) AS `source`
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM `VariationValue` AS `existing`
+    WHERE `existing`.`variationTypeId` = `source`.`variationTypeId`
+        AND `existing`.`value` = `source`.`value`
+);
+
+INSERT INTO `ProductVariationType` (`id`, `productId`, `variationTypeId`, `sortOrder`)
+SELECT UUID(), `source`.`productId`, `source`.`variationTypeId`, `source`.`sortOrder`
+FROM (
+    SELECT
+        `attribute`.`productId`,
+        `type`.`id` AS `variationTypeId`,
+        ROW_NUMBER() OVER (
+            PARTITION BY `attribute`.`productId`
+            ORDER BY `attribute`.`name`, `attribute`.`id`
+        ) AS `sortOrder`
+    FROM `Attribute` AS `attribute`
+    INNER JOIN `VariationType` AS `type` ON `type`.`name` = `attribute`.`name`
+) AS `source`
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM `ProductVariationType` AS `existing`
+    WHERE `existing`.`productId` = `source`.`productId`
+        AND `existing`.`variationTypeId` = `source`.`variationTypeId`
+);
+
+INSERT IGNORE INTO `ProductVariantValue` (`id`, `variantId`, `variationValueId`)
+SELECT UUID(), `variantValue`.`variantId`, `value`.`id`
+FROM `VariantOptionValue` AS `variantValue`
+INNER JOIN `AttributeOption` AS `option` ON `option`.`id` = `variantValue`.`attributeOptionId`
+INNER JOIN `Attribute` AS `attribute` ON `attribute`.`id` = `option`.`attributeId`
+INNER JOIN `VariationType` AS `type` ON `type`.`name` = `attribute`.`name`
+INNER JOIN `VariationValue` AS `value`
+    ON `value`.`variationTypeId` = `type`.`id`
+    AND `value`.`value` = `option`.`value`;
+
+-- Riwayat stok lama dipisah sesuai model audit baru.
+INSERT INTO `StockIn` (`id`, `variantId`, `quantity`, `note`, `userId`, `createdAt`)
+SELECT UUID(), `variantId`, `quantity`, `note`, `userId`, `createdAt`
+FROM `InventoryMovement`
+WHERE `type` = 'IN';
+
+INSERT INTO `StockOut` (`id`, `variantId`, `quantity`, `note`, `userId`, `createdAt`)
+SELECT UUID(), `variantId`, `quantity`, `note`, `userId`, `createdAt`
+FROM `InventoryMovement`
+WHERE `type` = 'OUT';
+
+-- DropTable
+DROP TABLE `Attribute`;
+
+-- DropTable
+DROP TABLE `AttributeOption`;
+
+-- DropTable
+DROP TABLE `InventoryMovement`;
+
+-- DropTable
+DROP TABLE `VariantOptionValue`;
 
 -- CreateIndex
 CREATE INDEX `Product_categoryId_idx` ON `Product`(`categoryId`);
