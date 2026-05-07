@@ -1,43 +1,43 @@
 /*
   Warnings:
 
-  - You are about to drop the column `category` on the `product` table. All the data in the column will be lost.
-  - You are about to drop the column `minStockAlert` on the `productvariant` table. All the data in the column will be lost.
-  - You are about to alter the column `price` on the `productvariant` table. The data in that column could be lost. The data in that column will be cast from `Decimal(10,2)` to `Decimal(12,2)`.
-  - You are about to drop the `attribute` table. If the table is not empty, all the data it contains will be lost.
-  - You are about to drop the `attributeoption` table. If the table is not empty, all the data it contains will be lost.
-  - You are about to drop the `inventorymovement` table. If the table is not empty, all the data it contains will be lost.
-  - You are about to drop the `variantoptionvalue` table. If the table is not empty, all the data it contains will be lost.
+  - You are about to drop the column `category` on the `Product` table. All the data in the column will be lost.
+  - You are about to drop the column `minStockAlert` on the `ProductVariant` table. All the data in the column will be lost.
+  - You are about to alter the column `price` on the `ProductVariant` table. The data in that column could be lost. The data in that column will be cast from `Decimal(10,2)` to `Decimal(12,2)`.
+  - You are about to drop the `Attribute` table. If the table is not empty, all the data it contains will be lost.
+  - You are about to drop the `AttributeOption` table. If the table is not empty, all the data it contains will be lost.
+  - You are about to drop the `InventoryMovement` table. If the table is not empty, all the data it contains will be lost.
+  - You are about to drop the `VariantOptionValue` table. If the table is not empty, all the data it contains will be lost.
   - Added the required column `categoryId` to the `Product` table without a default value. This is not possible if the table is not empty.
   - Added the required column `updatedAt` to the `ProductVariant` table without a default value. This is not possible if the table is not empty.
 
 */
 -- DropForeignKey
-ALTER TABLE `attribute` DROP FOREIGN KEY `Attribute_productId_fkey`;
+ALTER TABLE `Attribute` DROP FOREIGN KEY `Attribute_productId_fkey`;
 
 -- DropForeignKey
-ALTER TABLE `attributeoption` DROP FOREIGN KEY `AttributeOption_attributeId_fkey`;
+ALTER TABLE `AttributeOption` DROP FOREIGN KEY `AttributeOption_attributeId_fkey`;
 
 -- DropForeignKey
-ALTER TABLE `inventorymovement` DROP FOREIGN KEY `InventoryMovement_userId_fkey`;
+ALTER TABLE `InventoryMovement` DROP FOREIGN KEY `InventoryMovement_userId_fkey`;
 
 -- DropForeignKey
-ALTER TABLE `inventorymovement` DROP FOREIGN KEY `InventoryMovement_variantId_fkey`;
+ALTER TABLE `InventoryMovement` DROP FOREIGN KEY `InventoryMovement_variantId_fkey`;
 
 -- DropForeignKey
-ALTER TABLE `variantoptionvalue` DROP FOREIGN KEY `VariantOptionValue_attributeOptionId_fkey`;
+ALTER TABLE `VariantOptionValue` DROP FOREIGN KEY `VariantOptionValue_attributeOptionId_fkey`;
 
 -- DropForeignKey
-ALTER TABLE `variantoptionvalue` DROP FOREIGN KEY `VariantOptionValue_variantId_fkey`;
+ALTER TABLE `VariantOptionValue` DROP FOREIGN KEY `VariantOptionValue_variantId_fkey`;
 
 -- AlterTable
-ALTER TABLE `product` DROP COLUMN `category`,
+ALTER TABLE `Product` DROP COLUMN `category`,
     ADD COLUMN `categoryId` VARCHAR(191) NOT NULL,
     ADD COLUMN `image` VARCHAR(191) NULL,
     MODIFY `description` VARCHAR(191) NULL;
 
 -- AlterTable
-ALTER TABLE `productvariant` DROP COLUMN `minStockAlert`,
+ALTER TABLE `ProductVariant` DROP COLUMN `minStockAlert`,
     ADD COLUMN `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     ADD COLUMN `isActive` BOOLEAN NOT NULL DEFAULT true,
     ADD COLUMN `minStock` INTEGER NOT NULL DEFAULT 0,
@@ -45,16 +45,16 @@ ALTER TABLE `productvariant` DROP COLUMN `minStockAlert`,
     MODIFY `price` DECIMAL(12, 2) NOT NULL;
 
 -- DropTable
-DROP TABLE `attribute`;
+DROP TABLE `Attribute`;
 
 -- DropTable
-DROP TABLE `attributeoption`;
+DROP TABLE `AttributeOption`;
 
 -- DropTable
-DROP TABLE `inventorymovement`;
+DROP TABLE `InventoryMovement`;
 
 -- DropTable
-DROP TABLE `variantoptionvalue`;
+DROP TABLE `VariantOptionValue`;
 
 -- CreateTable
 CREATE TABLE `Category` (
