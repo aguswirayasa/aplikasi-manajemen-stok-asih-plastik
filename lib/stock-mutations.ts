@@ -31,7 +31,11 @@ export async function recordStockIn(
 
   const variants = await prisma.productVariant.findMany({
     where: { id: { in: variantIds } },
-    select: { id: true, isActive: true },
+    select: {
+      id: true,
+      isActive: true,
+      product: { select: { isArchived: true } },
+    },
   });
 
   if (variants.length !== variantIds.length) {
@@ -42,10 +46,30 @@ export async function recordStockIn(
     throw new ApiError("SKU tidak aktif dan tidak bisa menerima stok.", 409);
   }
 
+  if (variants.some((variant) => variant.product.isArchived)) {
+    throw new ApiError(
+      "Produk yang sudah diarsipkan tidak bisa menerima stok.",
+      409
+    );
+  }
+
   return prisma.$transaction(async (tx) => {
     const createdIds: string[] = [];
 
     for (const item of items) {
+      const updated = await tx.productVariant.updateMany({
+        where: {
+          id: item.variantId,
+          isActive: true,
+          product: { is: { isArchived: false } },
+        },
+        data: { stock: { increment: item.quantity } },
+      });
+
+      if (updated.count === 0) {
+        throw new ApiError("SKU tidak bisa menerima stok.", 409);
+      }
+
       const stockIn = await tx.stockIn.create({
         data: {
           variantId: item.variantId,
@@ -53,11 +77,6 @@ export async function recordStockIn(
           note,
           userId,
         },
-      });
-
-      await tx.productVariant.update({
-        where: { id: item.variantId },
-        data: { stock: { increment: item.quantity } },
       });
 
       createdIds.push(stockIn.id);
@@ -84,6 +103,7 @@ export async function recordStockOut(
         where: {
           id: item.variantId,
           isActive: true,
+          product: { is: { isArchived: false } },
           stock: { gte: item.quantity },
         },
         data: {
@@ -94,7 +114,13 @@ export async function recordStockOut(
       if (updated.count === 0) {
         const variant = await tx.productVariant.findUnique({
           where: { id: item.variantId },
-          select: { id: true, isActive: true, sku: true, stock: true },
+          select: {
+            id: true,
+            isActive: true,
+            sku: true,
+            stock: true,
+            product: { select: { isArchived: true } },
+          },
         });
 
         if (!variant) {
@@ -103,6 +129,13 @@ export async function recordStockOut(
 
         if (!variant.isActive) {
           throw new ApiError("SKU tidak aktif dan tidak bisa dikeluarkan.", 409);
+        }
+
+        if (variant.product.isArchived) {
+          throw new ApiError(
+            "Produk yang sudah diarsipkan tidak bisa dikeluarkan.",
+            409
+          );
         }
 
         throw new ApiError(

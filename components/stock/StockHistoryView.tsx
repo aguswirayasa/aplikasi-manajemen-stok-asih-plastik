@@ -36,7 +36,7 @@ export function StockHistoryView({
               Riwayat Transaksi
             </h1>
             <p className="mt-1 max-w-[620px] text-[15px] leading-[1.25] text-[#939084]">
-              Seratus transaksi terbaru dari barang masuk dan kasir stok keluar.
+              Daftar transaksi terbaru dari barang masuk dan kasir stok keluar.
             </p>
           </div>
         </div>

@@ -1,4 +1,4 @@
-import { apiResponse, requireAuth, withErrorHandler } from "@/lib/api-helpers";
+import { apiResponse, requireAdmin, withErrorHandler } from "@/lib/api-helpers";
 import {
   createTelegramLinkToken,
   getTelegramLinkStatus,
@@ -6,14 +6,14 @@ import {
 } from "@/lib/telegram/linking";
 
 export const GET = withErrorHandler(async () => {
-  const user = await requireAuth();
+  const user = await requireAdmin();
   const status = await getTelegramLinkStatus(user.id);
 
   return apiResponse(status);
 });
 
 export const POST = withErrorHandler(async () => {
-  const user = await requireAuth();
+  const user = await requireAdmin();
   const status = await getTelegramLinkStatus(user.id);
   const token = await createTelegramLinkToken(user.id);
 
@@ -24,7 +24,7 @@ export const POST = withErrorHandler(async () => {
 });
 
 export const DELETE = withErrorHandler(async () => {
-  const user = await requireAuth();
+  const user = await requireAdmin();
 
   await unlinkTelegramUser(user.id);
 

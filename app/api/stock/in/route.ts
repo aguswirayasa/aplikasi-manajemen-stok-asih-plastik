@@ -1,14 +1,14 @@
 import { NextRequest } from "next/server";
 import {
   apiResponse,
-  requireAdmin,
+  requireAuth,
   withErrorHandler,
 } from "@/lib/api-helpers";
 import { recordStockIn } from "@/lib/stock-mutations";
 import { parseOptionalStockNote, parseStockItems } from "@/lib/stock-validation";
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
-  const user = await requireAdmin();
+  const user = await requireAuth();
 
   const body = await req.json();
   const note = parseOptionalStockNote(body.note);

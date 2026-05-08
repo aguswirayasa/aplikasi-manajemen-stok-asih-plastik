@@ -67,18 +67,41 @@ export const DELETE = withErrorHandler(async (
   await requireAdmin();
   const { id } = await params;
 
-  const usageCount = await prisma.productVariationType.count({
-    where: { variationTypeId: id },
+  const type = await prisma.variationType.findUnique({
+    where: { id },
+    select: {
+      _count: { select: { productVariationTypes: true } },
+    },
   });
 
-  if (usageCount > 0) {
+  if (!type) {
+    throw new ApiError("Tipe variasi tidak ditemukan.", 404);
+  }
+
+  const productUsageCount = type._count.productVariationTypes;
+
+  if (productUsageCount > 0) {
     throw new ApiError(
-      `Tidak bisa dihapus: tipe variasi ini digunakan oleh ${usageCount} produk.`,
+      `Tidak bisa dihapus: tipe variasi ini digunakan oleh ${productUsageCount} produk.`,
       409
     );
   }
 
-  await prisma.variationType.delete({ where: { id } });
+  const skuUsageCount = await prisma.productVariantValue.count({
+    where: { variationValue: { variationTypeId: id } },
+  });
+
+  if (skuUsageCount > 0) {
+    throw new ApiError(
+      `Tidak bisa dihapus: nilai pada tipe variasi ini digunakan oleh ${skuUsageCount} SKU produk.`,
+      409
+    );
+  }
+
+  await prisma.$transaction([
+    prisma.variationValue.deleteMany({ where: { variationTypeId: id } }),
+    prisma.variationType.delete({ where: { id } }),
+  ]);
 
   return apiResponse(null, 200, "Tipe variasi berhasil dihapus.");
 });

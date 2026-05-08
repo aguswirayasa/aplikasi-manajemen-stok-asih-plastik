@@ -1,5 +1,5 @@
 import { StockHistoryView } from "@/components/stock/StockHistoryView";
-import { requirePageAdmin } from "@/lib/page-auth";
+import { requirePageAuth } from "@/lib/page-auth";
 import prisma from "@/lib/prisma";
 import {
   mergeStockTransactions,
@@ -9,7 +9,7 @@ import {
 export const dynamic = "force-dynamic";
 
 export default async function StockHistoryPage() {
-  await requirePageAdmin();
+  await requirePageAuth();
 
   const [stockIns, stockOuts] = await Promise.all([
     prisma.stockIn.findMany({

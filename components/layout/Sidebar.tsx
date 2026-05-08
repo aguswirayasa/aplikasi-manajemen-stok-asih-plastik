@@ -20,9 +20,6 @@ const mainNavItems = [
   { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { title: "Produk", href: "/products", icon: Package },
   { title: "Kasir (Keluar)", href: "/stock/out", icon: ArrowUpFromLine },
-];
-
-const adminStockItems = [
   { title: "Barang Masuk", href: "/stock/in", icon: ArrowDownToLine },
   { title: "Riwayat", href: "/stock/history", icon: History },
 ];
@@ -74,7 +71,7 @@ export function Sidebar() {
                 "flex items-center gap-3 px-3 py-2 rounded text-sm font-medium transition-colors",
                 isActive
                   ? "bg-[#eceae3] text-[#201515]"
-                  : "text-[#36342e] hover:bg-[#eceae3] hover:text-[#201515]"
+                  : "text-[#36342e] hover:bg-[#eceae3] hover:text-[#201515]",
               )}
               style={
                 isActive
@@ -85,44 +82,13 @@ export function Sidebar() {
               <item.icon
                 className={cn(
                   "w-4 h-4 flex-shrink-0",
-                  isActive ? "text-[#ff4f00]" : "text-[#939084]"
+                  isActive ? "text-[#ff4f00]" : "text-[#939084]",
                 )}
               />
               {item.title}
             </Link>
           );
         })}
-
-        {isAdmin &&
-          adminStockItems.map((item) => {
-            const isActive =
-              pathname === item.href || pathname.startsWith(item.href + "/");
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "flex items-center gap-3 px-3 py-2 rounded text-sm font-medium transition-colors",
-                  isActive
-                    ? "bg-[#eceae3] text-[#201515]"
-                    : "text-[#36342e] hover:bg-[#eceae3] hover:text-[#201515]"
-                )}
-                style={
-                  isActive
-                    ? { boxShadow: "rgb(255, 79, 0) -3px 0 0 0 inset" }
-                    : undefined
-                }
-              >
-                <item.icon
-                  className={cn(
-                    "w-4 h-4 flex-shrink-0",
-                    isActive ? "text-[#ff4f00]" : "text-[#939084]"
-                  )}
-                />
-                {item.title}
-              </Link>
-            );
-          })}
 
         {isAdmin && (
           <>
@@ -140,7 +106,7 @@ export function Sidebar() {
                     "flex items-center gap-3 px-3 py-2 rounded text-sm font-medium transition-colors",
                     isActive
                       ? "bg-[#eceae3] text-[#201515]"
-                      : "text-[#36342e] hover:bg-[#eceae3] hover:text-[#201515]"
+                      : "text-[#36342e] hover:bg-[#eceae3] hover:text-[#201515]",
                   )}
                   style={
                     isActive
@@ -151,7 +117,7 @@ export function Sidebar() {
                   <item.icon
                     className={cn(
                       "w-4 h-4 flex-shrink-0",
-                      isActive ? "text-[#ff4f00]" : "text-[#939084]"
+                      isActive ? "text-[#ff4f00]" : "text-[#939084]",
                     )}
                   />
                   {item.title}
@@ -161,38 +127,42 @@ export function Sidebar() {
           </>
         )}
 
-        <p className="px-3 pt-5 pb-2 text-[10px] font-semibold uppercase tracking-widest text-[#939084]">
-          Integrasi
-        </p>
-        {integrationNavItems.map((item) => {
-          const isActive =
-            pathname === item.href || pathname.startsWith(item.href + "/");
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "flex items-center gap-3 px-3 py-2 rounded text-sm font-medium transition-colors",
-                isActive
-                  ? "bg-[#eceae3] text-[#201515]"
-                  : "text-[#36342e] hover:bg-[#eceae3] hover:text-[#201515]"
-              )}
-              style={
-                isActive
-                  ? { boxShadow: "rgb(255, 79, 0) -3px 0 0 0 inset" }
-                  : undefined
-              }
-            >
-              <item.icon
-                className={cn(
-                  "w-4 h-4 flex-shrink-0",
-                  isActive ? "text-[#ff4f00]" : "text-[#939084]"
-                )}
-              />
-              {item.title}
-            </Link>
-          );
-        })}
+        {isAdmin && (
+          <>
+            <p className="px-3 pt-5 pb-2 text-[10px] font-semibold uppercase tracking-widest text-[#939084]">
+              Integrasi
+            </p>
+            {integrationNavItems.map((item) => {
+              const isActive =
+                pathname === item.href || pathname.startsWith(item.href + "/");
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-2 rounded text-sm font-medium transition-colors",
+                    isActive
+                      ? "bg-[#eceae3] text-[#201515]"
+                      : "text-[#36342e] hover:bg-[#eceae3] hover:text-[#201515]",
+                  )}
+                  style={
+                    isActive
+                      ? { boxShadow: "rgb(255, 79, 0) -3px 0 0 0 inset" }
+                      : undefined
+                  }
+                >
+                  <item.icon
+                    className={cn(
+                      "w-4 h-4 flex-shrink-0",
+                      isActive ? "text-[#ff4f00]" : "text-[#939084]",
+                    )}
+                  />
+                  {item.title}
+                </Link>
+              );
+            })}
+          </>
+        )}
       </nav>
 
       {/* Footer */}
@@ -203,7 +173,7 @@ export function Sidebar() {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-xs font-semibold text-[#201515] truncate">
-              {session?.user?.username}
+              {session?.user?.name}
             </p>
             <p className="text-[10px] text-[#939084] truncate">
               {session?.user?.role}

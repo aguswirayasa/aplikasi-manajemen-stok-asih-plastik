@@ -70,55 +70,70 @@ export function ProductWizard({
   const [categoryId, setCategoryId] = useState("");
   const [description, setDescription] = useState("");
 
-  const [selectedVariations, setSelectedVariations] = useState<Record<string, string[]>>({});
-  const [selectedCombinationKeys, setSelectedCombinationKeys] = useState<string[]>([]);
-  const [variantDrafts, setVariantDrafts] = useState<Record<string, VariantDraft>>({});
+  const [selectedVariations, setSelectedVariations] = useState<
+    Record<string, string[]>
+  >({});
+  const [selectedCombinationKeys, setSelectedCombinationKeys] = useState<
+    string[]
+  >([]);
+  const [variantDrafts, setVariantDrafts] = useState<
+    Record<string, VariantDraft>
+  >({});
   const [bulkEditorOpen, setBulkEditorOpen] = useState(false);
   const [bulkFilters, setBulkFilters] = useState<Record<string, string>>({});
-  const [bulkDraft, setBulkDraft] = useState<VariantDraft>(EMPTY_BULK_VARIANT_DRAFT);
+  const [bulkDraft, setBulkDraft] = useState<VariantDraft>(
+    EMPTY_BULK_VARIANT_DRAFT,
+  );
 
   const valueMap = useMemo(() => {
     const map = new Map<string, string>();
     variationTypes.forEach((type) =>
-      type.values.forEach((value) => map.set(value.id, value.value))
+      type.values.forEach((value) => map.set(value.id, value.value)),
     );
     return map;
   }, [variationTypes]);
 
   const combinations = useMemo(
     () => buildCombinations(variationTypes, selectedVariations),
-    [variationTypes, selectedVariations]
+    [variationTypes, selectedVariations],
   );
   const combinationKeySet = useMemo(
     () => new Set(combinations.map((combination) => combination.key)),
-    [combinations]
+    [combinations],
   );
   const selectedCombinations = useMemo(
     () =>
       combinations.filter((combination) =>
-        selectedCombinationKeys.includes(combination.key)
+        selectedCombinationKeys.includes(combination.key),
       ),
-    [combinations, selectedCombinationKeys]
+    [combinations, selectedCombinationKeys],
   );
   const activeVariationTypes = useMemo(
     () =>
       variationTypes.filter(
-        (variationType) => (selectedVariations[variationType.id]?.length ?? 0) > 0
+        (variationType) =>
+          (selectedVariations[variationType.id]?.length ?? 0) > 0,
       ),
-    [selectedVariations, variationTypes]
+    [selectedVariations, variationTypes],
   );
   const matchedBulkCombinations = useMemo(
-    () => getMatchedBulkCombinations(selectedCombinations, activeVariationTypes, bulkFilters),
-    [activeVariationTypes, bulkFilters, selectedCombinations]
+    () =>
+      getMatchedBulkCombinations(
+        selectedCombinations,
+        activeVariationTypes,
+        bulkFilters,
+      ),
+    [activeVariationTypes, bulkFilters, selectedCombinations],
   );
   const reviewSummary = useMemo(
     () => buildReviewSummary(selectedCombinations, variantDrafts),
-    [selectedCombinations, variantDrafts]
+    [selectedCombinations, variantDrafts],
   );
   const selectedCategoryName =
     categories.find((category) => category.id === categoryId)?.name ?? "-";
   const allCombinationsSelected =
-    combinations.length > 0 && selectedCombinations.length === combinations.length;
+    combinations.length > 0 &&
+    selectedCombinations.length === combinations.length;
 
   const canGoNext = () => {
     if (step === 1) {
@@ -137,7 +152,10 @@ export function ProductWizard({
   };
 
   const handleSave = async () => {
-    const validationMessage = validateVariantDrafts(selectedCombinations, variantDrafts);
+    const validationMessage = validateVariantDrafts(
+      selectedCombinations,
+      variantDrafts,
+    );
 
     if (validationMessage) {
       toast.error(validationMessage);
@@ -177,7 +195,7 @@ export function ProductWizard({
       router.refresh();
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Gagal menyimpan produk."
+        error instanceof Error ? error.message : "Gagal menyimpan produk.",
       );
     } finally {
       setLoading(false);
@@ -197,7 +215,7 @@ export function ProductWizard({
       return next;
     });
     setSelectedCombinationKeys((current) =>
-      current.filter((key) => combinationKeySet.has(key))
+      current.filter((key) => combinationKeySet.has(key)),
     );
   };
 
@@ -213,7 +231,7 @@ export function ProductWizard({
       return next;
     });
     setSelectedCombinationKeys((current) =>
-      current.filter((key) => combinationKeySet.has(key))
+      current.filter((key) => combinationKeySet.has(key)),
     );
   };
 
@@ -221,12 +239,14 @@ export function ProductWizard({
     setSelectedCombinationKeys((current) =>
       current.includes(combinationKey)
         ? current.filter((key) => key !== combinationKey)
-        : [...current, combinationKey]
+        : [...current, combinationKey],
     );
   };
 
   const selectAllCombinations = () => {
-    setSelectedCombinationKeys(combinations.map((combination) => combination.key));
+    setSelectedCombinationKeys(
+      combinations.map((combination) => combination.key),
+    );
   };
 
   const clearCombinationSelection = () => {
@@ -236,7 +256,7 @@ export function ProductWizard({
   const updateVariantDraft = (
     combinationKey: string,
     field: keyof VariantDraft,
-    value: string
+    value: string,
   ) => {
     setVariantDrafts((current) => ({
       ...current,
@@ -249,7 +269,7 @@ export function ProductWizard({
 
   const normalizeVariantNumber = (
     combinationKey: string,
-    field: keyof VariantDraft
+    field: keyof VariantDraft,
   ) => {
     setVariantDrafts((current) => {
       const draft = getVariantDraft(current, combinationKey);
@@ -259,7 +279,8 @@ export function ProductWizard({
         return current;
       }
 
-      const parsed = field === "price" ? Number(value) : Number.parseInt(value, 10);
+      const parsed =
+        field === "price" ? Number(value) : Number.parseInt(value, 10);
 
       if (!Number.isFinite(parsed) || parsed < 0) {
         return current;
@@ -290,7 +311,8 @@ export function ProductWizard({
         return current;
       }
 
-      const parsed = field === "price" ? Number(value) : Number.parseInt(value, 10);
+      const parsed =
+        field === "price" ? Number(value) : Number.parseInt(value, 10);
 
       if (!Number.isFinite(parsed) || parsed < 0) {
         return current;
@@ -344,7 +366,9 @@ export function ProductWizard({
 
       return next;
     });
-    toast.success(`Nilai massal diterapkan ke ${matchedBulkCombinations.length} SKU.`);
+    toast.success(
+      `Nilai massal diterapkan ke ${matchedBulkCombinations.length} SKU.`,
+    );
   };
 
   function getActiveVariationTypeIds() {
@@ -359,7 +383,7 @@ export function ProductWizard({
         {[1, 2, 3, 4, 5].map((stepNumber) => (
           <div
             key={stepNumber}
-            className={`border-b-[4px] px-2 py-3 text-center text-[12px] font-medium uppercase md:text-[14px] ${
+            className={`border-b-[4px] px-2 py-3 text-center text-[10px] font-medium uppercase md:text-[14px] ${
               step === stepNumber
                 ? "border-[#ff4f00] bg-[#fffefb] text-[#201515]"
                 : step > stepNumber
@@ -417,7 +441,8 @@ export function ProductWizard({
                 Pilih Tipe Variasi
               </h2>
               <p className="mt-1 text-[15px] text-[#939084] text-pretty">
-                Pilih variasi yang berlaku untuk produk ini, lalu pilih nilainya.
+                Pilih variasi yang berlaku untuk produk ini, lalu pilih
+                nilainya.
               </p>
             </div>
 
@@ -430,7 +455,9 @@ export function ProductWizard({
                   <button
                     type="button"
                     className={`flex min-h-14 w-full items-center gap-3 p-3 text-left ${
-                      selectedVariations[type.id] ? "bg-[#eceae3]" : "bg-[#fffefb]"
+                      selectedVariations[type.id]
+                        ? "bg-[#eceae3]"
+                        : "bg-[#fffefb]"
                     }`}
                     onClick={() => toggleVariationType(type.id)}
                   >
@@ -439,7 +466,9 @@ export function ProductWizard({
                     ) : (
                       <Square className="size-5 shrink-0 text-[#939084]" />
                     )}
-                    <span className="font-semibold text-[#201515]">{type.name}</span>
+                    <span className="font-semibold text-[#201515]">
+                      {type.name}
+                    </span>
                   </button>
 
                   {selectedVariations[type.id] && (
@@ -447,15 +476,17 @@ export function ProductWizard({
                       {type.values.length > 0 ? (
                         <div className="flex flex-wrap gap-2">
                           {type.values.map((value) => {
-                            const isSelected = selectedVariations[type.id]?.includes(
-                              value.id
-                            );
+                            const isSelected = selectedVariations[
+                              type.id
+                            ]?.includes(value.id);
 
                             return (
                               <button
                                 key={value.id}
                                 type="button"
-                                onClick={() => toggleVariationValue(type.id, value.id)}
+                                onClick={() =>
+                                  toggleVariationValue(type.id, value.id)
+                                }
                                 className={`min-h-10 rounded-[20px] border px-4 text-[14px] font-medium transition-colors ${
                                   isSelected
                                     ? "border-[#201515] bg-[#201515] text-[#fffefb]"
@@ -488,15 +519,17 @@ export function ProductWizard({
                   Pilih Kombinasi SKU
                 </h2>
                 <p className="mt-1 text-[15px] text-[#939084] text-pretty">
-                  Sistem membuat kombinasi dari variasi yang dipilih. Pilih hanya
-                  kombinasi yang benar-benar tersedia untuk produk ini.
+                  Sistem membuat kombinasi dari variasi yang dipilih. Pilih
+                  hanya kombinasi yang benar-benar tersedia untuk produk ini.
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
                   onClick={selectAllCombinations}
-                  disabled={combinations.length === 0 || allCombinationsSelected}
+                  disabled={
+                    combinations.length === 0 || allCombinationsSelected
+                  }
                   className="min-h-10 rounded-[5px] border border-[#c5c0b1] px-3 text-[14px] font-bold text-[#201515] disabled:opacity-50"
                 >
                   Pilih semua
@@ -513,12 +546,15 @@ export function ProductWizard({
             </div>
 
             <p className="text-[14px] font-semibold text-[#36342e]">
-              {selectedCombinations.length} dari {combinations.length} kombinasi dipilih.
+              {selectedCombinations.length} dari {combinations.length} kombinasi
+              dipilih.
             </p>
 
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
               {combinations.map((combination) => {
-                const selected = selectedCombinationKeys.includes(combination.key);
+                const selected = selectedCombinationKeys.includes(
+                  combination.key,
+                );
 
                 return (
                   <button
@@ -567,8 +603,8 @@ export function ProductWizard({
                 Atur Harga dan Stok
               </h2>
               <p className="mt-1 text-[15px] text-[#939084] text-pretty">
-                Boleh diisi 0 jika harga atau stok belum diketahui. Data SKU bisa
-                diedit nanti dari halaman edit produk.
+                Boleh diisi 0 jika harga atau stok belum diketahui. Data SKU
+                bisa diedit nanti dari halaman edit produk.
               </p>
             </div>
 
@@ -620,31 +656,39 @@ export function ProductWizard({
                           onChange={(value) =>
                             updateVariantDraft(combination.key, "price", value)
                           }
-                          onBlur={() => normalizeVariantNumber(combination.key, "price")}
+                          onBlur={() =>
+                            normalizeVariantNumber(combination.key, "price")
+                          }
                         />
                       </Field>
                       <Field label="Stok Awal">
                         <NumericInput
                           ariaLabel={`Stok awal ${formatCombinationName(
                             combination,
-                            valueMap
+                            valueMap,
                           )}`}
                           value={draft.stock}
                           onChange={(value) =>
                             updateVariantDraft(combination.key, "stock", value)
                           }
-                          onBlur={() => normalizeVariantNumber(combination.key, "stock")}
+                          onBlur={() =>
+                            normalizeVariantNumber(combination.key, "stock")
+                          }
                         />
                       </Field>
                       <Field label="Min. Stok">
                         <NumericInput
                           ariaLabel={`Minimal stok ${formatCombinationName(
                             combination,
-                            valueMap
+                            valueMap,
                           )}`}
                           value={draft.minStock}
                           onChange={(value) =>
-                            updateVariantDraft(combination.key, "minStock", value)
+                            updateVariantDraft(
+                              combination.key,
+                              "minStock",
+                              value,
+                            )
                           }
                           onBlur={() =>
                             normalizeVariantNumber(combination.key, "minStock")
@@ -689,7 +733,8 @@ export function ProductWizard({
             disabled={!canGoNext()}
             className="flex min-h-11 items-center gap-2 rounded-[4px] bg-[#ff4f00] px-5 text-[14px] font-semibold text-[#fffefb] transition-opacity hover:opacity-90 disabled:opacity-50"
           >
-            {step === 4 ? "Review Produk" : "Lanjut"} <ChevronRight className="size-4" />
+            {step === 4 ? "Review Produk" : "Lanjut"}{" "}
+            <ChevronRight className="size-4" />
           </button>
         ) : (
           <button
@@ -698,7 +743,8 @@ export function ProductWizard({
             disabled={loading}
             className="flex min-h-11 items-center gap-2 rounded-[4px] bg-[#201515] px-5 text-[14px] font-semibold text-[#fffefb] transition-colors hover:bg-[#36342e] disabled:opacity-50"
           >
-            {loading ? "Menyimpan..." : "Simpan Produk"} <Check className="size-4" />
+            {loading ? "Menyimpan..." : "Simpan Produk"}{" "}
+            <Check className="size-4" />
           </button>
         )}
       </div>
@@ -782,14 +828,18 @@ function BulkVariantApplyPanel({
   onDraftBlur: (field: keyof VariantDraft) => void;
   onApply: () => void;
 }) {
-  const hasFilter = Object.values(bulkFilters).some((valueId) => valueId.length > 0);
+  const hasFilter = Object.values(bulkFilters).some(
+    (valueId) => valueId.length > 0,
+  );
   const hasBulkValue = hasNonBlankBulkValue(bulkDraft);
 
   return (
     <section className="rounded-[5px] border border-[#c5c0b1] bg-[#eceae3]/35 p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h3 className="text-[16px] font-semibold text-[#201515]">Terapkan Massal</h3>
+          <h3 className="text-[16px] font-semibold text-[#201515]">
+            Terapkan Massal
+          </h3>
           <p className="mt-1 text-[13px] font-medium text-[#36342e]">
             Akan diterapkan ke {matchedCount} SKU
           </p>
@@ -811,7 +861,9 @@ function BulkVariantApplyPanel({
               <Field key={type.id} label={type.name}>
                 <select
                   value={bulkFilters[type.id] ?? ""}
-                  onChange={(event) => onFilterChange(type.id, event.target.value)}
+                  onChange={(event) =>
+                    onFilterChange(type.id, event.target.value)
+                  }
                   className="min-h-12 w-full rounded-[5px] border border-[#c5c0b1] bg-[#fffefb] px-3 text-[15px] text-[#201515] outline-none focus:border-[#ff4f00]"
                 >
                   <option value="">Semua {type.name}</option>
@@ -930,7 +982,9 @@ function ProductReviewStep({
       </div>
 
       <section className="rounded-[5px] border border-[#c5c0b1] bg-[#fffefb] p-4">
-        <h3 className="text-[16px] font-semibold text-[#201515]">Informasi Produk</h3>
+        <h3 className="text-[16px] font-semibold text-[#201515]">
+          Informasi Produk
+        </h3>
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           <ReviewInfo label="Nama Produk" value={name} />
           <ReviewInfo label="Kategori" value={categoryName} />
@@ -942,7 +996,10 @@ function ProductReviewStep({
                 : "-"
             }
           />
-          <ReviewInfo label="Jumlah SKU" value={`${reviewSummary.skuList.length} SKU`} />
+          <ReviewInfo
+            label="Jumlah SKU"
+            value={`${reviewSummary.skuList.length} SKU`}
+          />
         </div>
         <div className="mt-3">
           <ReviewInfo
@@ -962,16 +1019,21 @@ function ProductReviewStep({
               </h3>
               <div className="mt-2 space-y-1 text-[14px] text-[#6f4e1f]">
                 {reviewSummary.allSkuValuesAreZero && (
-                  <p>Semua SKU masih berisi harga, stok awal, dan min. stok 0.</p>
+                  <p>
+                    Semua SKU masih berisi harga, stok awal, dan min. stok 0.
+                  </p>
                 )}
                 {reviewSummary.allZeroCount > 0 &&
                   !reviewSummary.allSkuValuesAreZero && (
-                    <p>{reviewSummary.allZeroCount} SKU masih berisi semua nilai 0.</p>
+                    <p>
+                      {reviewSummary.allZeroCount} SKU masih berisi semua nilai
+                      0.
+                    </p>
                   )}
                 {reviewSummary.stockWithoutPriceCount > 0 && (
                   <p>
-                    {reviewSummary.stockWithoutPriceCount} SKU punya stok awal tetapi
-                    harga masih 0.
+                    {reviewSummary.stockWithoutPriceCount} SKU punya stok awal
+                    tetapi harga masih 0.
                   </p>
                 )}
               </div>
@@ -982,7 +1044,9 @@ function ProductReviewStep({
 
       <section className="space-y-3">
         <div className="flex items-center justify-between gap-3">
-          <h3 className="text-[16px] font-semibold text-[#201515]">Ringkasan SKU</h3>
+          <h3 className="text-[16px] font-semibold text-[#201515]">
+            Ringkasan SKU
+          </h3>
           <span className="text-[13px] font-semibold text-[#939084]">
             {reviewSummary.skuList.length} SKU
           </span>
@@ -1059,7 +1123,7 @@ function ReviewMetric({ label, value }: { label: string; value: string }) {
 
 function buildCombinations(
   variationTypes: VariationType[],
-  selectedVariations: Record<string, string[]>
+  selectedVariations: Record<string, string[]>,
 ): GeneratedCombination[] {
   const selectedRows = variationTypes
     .map((type) => ({
@@ -1100,7 +1164,7 @@ function createCombinationKey(valueIds: string[]) {
 
 function getVariantDraft(
   variantDrafts: Record<string, VariantDraft>,
-  combinationKey: string
+  combinationKey: string,
 ) {
   return variantDrafts[combinationKey] ?? EMPTY_VARIANT_DRAFT;
 }
@@ -1108,11 +1172,13 @@ function getVariantDraft(
 function getMatchedBulkCombinations(
   selectedCombinations: GeneratedCombination[],
   activeVariationTypes: VariationType[],
-  bulkFilters: Record<string, string>
+  bulkFilters: Record<string, string>,
 ) {
   const activeTypeIds = new Set(activeVariationTypes.map((type) => type.id));
   const activeFilterValueIds = Object.entries(bulkFilters)
-    .filter(([typeId, valueId]) => activeTypeIds.has(typeId) && valueId.length > 0)
+    .filter(
+      ([typeId, valueId]) => activeTypeIds.has(typeId) && valueId.length > 0,
+    )
     .map(([, valueId]) => valueId);
 
   if (activeFilterValueIds.length === 0) {
@@ -1120,7 +1186,9 @@ function getMatchedBulkCombinations(
   }
 
   return selectedCombinations.filter((combination) =>
-    activeFilterValueIds.every((valueId) => combination.valueIds.includes(valueId))
+    activeFilterValueIds.every((valueId) =>
+      combination.valueIds.includes(valueId),
+    ),
   );
 }
 
@@ -1144,7 +1212,10 @@ function buildBulkVariantPatch(bulkDraft: VariantDraft): {
 
   if (bulkDraft.stock.trim().length > 0) {
     if (!isValidNonNegativeInteger(bulkDraft.stock)) {
-      return { patch, error: "Stok awal massal harus berupa angka bulat 0 atau lebih." };
+      return {
+        patch,
+        error: "Stok awal massal harus berupa angka bulat 0 atau lebih.",
+      };
     }
 
     patch.stock = Number.parseInt(bulkDraft.stock, 10).toString();
@@ -1152,7 +1223,10 @@ function buildBulkVariantPatch(bulkDraft: VariantDraft): {
 
   if (bulkDraft.minStock.trim().length > 0) {
     if (!isValidNonNegativeInteger(bulkDraft.minStock)) {
-      return { patch, error: "Minimal stok massal harus berupa angka bulat 0 atau lebih." };
+      return {
+        patch,
+        error: "Minimal stok massal harus berupa angka bulat 0 atau lebih.",
+      };
     }
 
     patch.minStock = Number.parseInt(bulkDraft.minStock, 10).toString();
@@ -1163,7 +1237,7 @@ function buildBulkVariantPatch(bulkDraft: VariantDraft): {
 
 function buildReviewSummary(
   selectedCombinations: GeneratedCombination[],
-  variantDrafts: Record<string, VariantDraft>
+  variantDrafts: Record<string, VariantDraft>,
 ): ReviewSummary {
   const skuList = selectedCombinations.map((combination) => {
     const draft = getVariantDraft(variantDrafts, combination.key);
@@ -1180,7 +1254,7 @@ function buildReviewSummary(
   });
   const allZeroCount = skuList.filter((sku) => sku.isAllZero).length;
   const stockWithoutPriceCount = skuList.filter(
-    (sku) => sku.hasStockWithoutPrice
+    (sku) => sku.hasStockWithoutPrice,
   ).length;
 
   return {
@@ -1193,7 +1267,7 @@ function buildReviewSummary(
 
 function validateVariantDrafts(
   selectedCombinations: GeneratedCombination[],
-  variantDrafts: Record<string, VariantDraft>
+  variantDrafts: Record<string, VariantDraft>,
 ) {
   if (selectedCombinations.length === 0) {
     return "Pilih minimal satu kombinasi SKU.";
@@ -1238,7 +1312,7 @@ function isValidNonNegativeNumber(value: string) {
 
 function formatCombinationName(
   combination: GeneratedCombination,
-  valueMap: Map<string, string>
+  valueMap: Map<string, string>,
 ) {
   return combination.valueIds
     .map((valueId) => valueMap.get(valueId))

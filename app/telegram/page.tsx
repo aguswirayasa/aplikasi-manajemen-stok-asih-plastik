@@ -1,11 +1,11 @@
 import { MessageCircle } from "lucide-react";
 import { TelegramLinkPanel } from "@/components/telegram/TelegramLinkPanel";
-import { requirePageAuth } from "@/lib/page-auth";
+import { requirePageAdmin } from "@/lib/page-auth";
 
 export const dynamic = "force-dynamic";
 
 export default async function TelegramPage() {
-  await requirePageAuth();
+  await requirePageAdmin();
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 pb-8">

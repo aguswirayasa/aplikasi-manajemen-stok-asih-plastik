@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma";
 import {
   ApiError,
   apiResponse,
+  requireAdmin,
   requireAuth,
   withErrorHandler,
 } from "@/lib/api-helpers";
@@ -29,7 +30,7 @@ export const PUT = withErrorHandler(async (
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) => {
-  await requireAuth();
+  await requireAdmin();
   const { id } = await params;
   const body = await req.json();
   const { name } = body;
@@ -50,7 +51,7 @@ export const DELETE = withErrorHandler(async (
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) => {
-  await requireAuth();
+  await requireAdmin();
   const { id } = await params;
 
   const category = await prisma.category.findUnique({

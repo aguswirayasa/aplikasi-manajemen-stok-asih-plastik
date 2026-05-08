@@ -24,6 +24,7 @@ export const GET = withErrorHandler(async () => {
   await requireAuth();
 
   const products = await prisma.product.findMany({
+    where: { isArchived: false },
     include: {
       category: true,
       variants: {

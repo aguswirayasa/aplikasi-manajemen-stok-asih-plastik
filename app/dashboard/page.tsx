@@ -1,20 +1,21 @@
-import { getServerSession } from "next-auth";
-import { redirect } from "next/navigation";
 import { DashboardOverview } from "@/components/dashboard/DashboardOverview";
-import { authOptions } from "@/lib/auth";
 import { getDashboardData } from "@/lib/dashboard-data";
+import { requirePageAuth } from "@/lib/page-auth";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
-  const session = await getServerSession(authOptions);
+  const user = await requirePageAuth();
+  const isAdmin = user.role === "ADMIN";
 
-  if (!session) {
-    redirect("/login");
-  }
+  const data = await getDashboardData({ includeOwnerTotals: isAdmin });
+  const displayName = user.name || user.username;
 
-  const data = await getDashboardData();
-  const displayName = session.user.name || session.user.username;
-
-  return <DashboardOverview data={data} displayName={displayName} />;
+  return (
+    <DashboardOverview
+      data={data}
+      displayName={displayName}
+      isAdmin={isAdmin}
+    />
+  );
 }

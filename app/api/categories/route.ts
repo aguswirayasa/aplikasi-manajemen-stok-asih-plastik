@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma";
 import {
   ApiError,
   apiResponse,
+  requireAdmin,
   requireAuth,
   withErrorHandler,
 } from "@/lib/api-helpers";
@@ -23,7 +24,7 @@ export const GET = withErrorHandler(async () => {
 });
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
-  await requireAuth();
+  await requireAdmin();
 
   const body = await req.json();
   const { name } = body;

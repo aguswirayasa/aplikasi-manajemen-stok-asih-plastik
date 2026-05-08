@@ -1,6 +1,3 @@
-import Link from "next/link";
-import { ArrowUpRight } from "lucide-react";
-
 export function DashboardHeader({ displayName }: { displayName: string }) {
   return (
     <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
@@ -16,13 +13,6 @@ export function DashboardHeader({ displayName }: { displayName: string }) {
           <span className="font-bold text-[#201515]">{displayName}</span>.
         </p>
       </div>
-      <Link
-        href="/stock/out"
-        className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-[5px] border border-[#ff4f00] bg-[#ff4f00] px-5 text-[15px] font-bold text-[#fffefb] transition-colors hover:bg-[#e64600] md:w-auto"
-      >
-        <ArrowUpRight className="h-4 w-4" />
-        Catat Stok Keluar
-      </Link>
     </header>
   );
 }

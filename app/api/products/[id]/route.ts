@@ -89,11 +89,15 @@ export const PUT = withErrorHandler(async (
   const product = await prisma.$transaction(async (tx) => {
     const existingProduct = await tx.product.findUnique({
       where: { id },
-      select: { id: true },
+      select: { id: true, isArchived: true },
     });
 
     if (!existingProduct) {
       throw new ApiError("Produk tidak ditemukan.", 404);
+    }
+
+    if (existingProduct.isArchived) {
+      throw new ApiError("Produk yang sudah diarsipkan tidak bisa diedit.", 409);
     }
 
     const category = await tx.category.findUnique({
@@ -151,11 +155,63 @@ export const DELETE = withErrorHandler(async (
   await requireAdmin();
   const { id } = await params;
 
-  await prisma.product.delete({
-    where: { id },
+  const result = await prisma.$transaction(async (tx) => {
+    const product = await tx.product.findUnique({
+      where: { id },
+      include: {
+        variants: {
+          select: {
+            id: true,
+            stock: true,
+          },
+        },
+      },
+    });
+
+    if (!product) {
+      throw new ApiError("Produk tidak ditemukan.", 404);
+    }
+
+    if (product.isArchived) {
+      return { mode: "archived" as const };
+    }
+
+    const variantIds = product.variants.map((variant) => variant.id);
+    const hasStock = product.variants.some((variant) => variant.stock !== 0);
+
+    if (variantIds.length === 0) {
+      await tx.product.delete({ where: { id } });
+      return { mode: "deleted" as const };
+    }
+
+    const [stockInCount, stockOutCount] = await Promise.all([
+      tx.stockIn.count({ where: { variantId: { in: variantIds } } }),
+      tx.stockOut.count({ where: { variantId: { in: variantIds } } }),
+    ]);
+    const hasHistory = stockInCount > 0 || stockOutCount > 0;
+
+    if (!hasHistory && !hasStock) {
+      await tx.product.delete({ where: { id } });
+      return { mode: "deleted" as const };
+    }
+
+    await tx.product.update({
+      where: { id },
+      data: {
+        isArchived: true,
+        archivedAt: new Date(),
+      },
+    });
+
+    return { mode: "archived" as const };
   });
 
-  return apiResponse({ success: true });
+  const message =
+    result.mode === "deleted"
+      ? "Produk berhasil dihapus."
+      : "Produk diarsipkan karena sudah memiliki stok atau riwayat stok.";
+
+  return apiResponse(result, 200, message);
 });
 
 function parseVariantUpdates(value: unknown): ParsedVariantUpdate[] {

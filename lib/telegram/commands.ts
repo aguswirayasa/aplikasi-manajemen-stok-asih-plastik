@@ -117,6 +117,7 @@ async function buildCommandReply(
     }
 
     const user = await requireLinkedTelegramUser(chatId);
+    assertAdmin(user);
 
     switch (command.kind) {
       case "me":
@@ -124,12 +125,10 @@ async function buildCommandReply(
       case "lowstock":
         return await buildLowStockMessage();
       case "report":
-        assertAdmin(user);
         return await buildDailyReportMessage();
       case "lookup":
         return await handleLookupCommand(command.sku);
       case "stockIn":
-        assertAdmin(user);
         return await handleStockInCommand(user, command);
       case "stockOut":
         return await handleStockOutCommand(user, command);
@@ -276,7 +275,10 @@ function buildTelegramNote(note: string | null) {
 
 async function findVariantBySku(sku: string) {
   const variant = await prisma.productVariant.findFirst({
-    where: { sku: sku.trim() },
+    where: {
+      sku: sku.trim(),
+      product: { is: { isArchived: false } },
+    },
     include: {
       product: true,
     },

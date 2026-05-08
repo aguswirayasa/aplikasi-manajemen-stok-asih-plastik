@@ -69,7 +69,8 @@ export default async function ProductDetailPage({
       product={toProductDetailViewProduct(product)}
       summary={{ totalVariants, totalStock, stockStatus }}
       recentMovements={recentMovements.map(toProductDetailMovement)}
-      canEdit={user.role === "ADMIN"}
+      canEdit={user.role === "ADMIN" && !product.isArchived}
+      canDelete={user.role === "ADMIN" && !product.isArchived}
     />
   );
 }
@@ -78,6 +79,7 @@ function toProductDetailViewProduct(product: {
   id: string;
   name: string;
   description: string | null;
+  isArchived: boolean;
   createdAt: Date;
   updatedAt: Date;
   category: { name: string };
@@ -100,6 +102,7 @@ function toProductDetailViewProduct(product: {
     id: product.id,
     name: product.name,
     description: product.description,
+    isArchived: product.isArchived,
     categoryName: product.category.name,
     createdAt: product.createdAt,
     updatedAt: product.updatedAt,

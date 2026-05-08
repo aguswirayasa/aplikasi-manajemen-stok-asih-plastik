@@ -8,14 +8,16 @@ import type { DashboardData } from "@/types/dashboard";
 export function DashboardOverview({
   data,
   displayName,
+  isAdmin,
 }: {
   data: DashboardData;
   displayName: string;
+  isAdmin: boolean;
 }) {
   return (
     <div className="space-y-6 pb-8">
       <DashboardHeader displayName={displayName} />
-      <DashboardStatCards totals={data.totals} />
+      {isAdmin && data.totals && <DashboardStatCards totals={data.totals} />}
       <DashboardTodayCards today={data.today} />
       <section className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(340px,0.8fr)]">
         <LowStockPanel variants={data.lowStockVariants} />

@@ -1,8 +1,8 @@
 import { StockInClient } from "@/components/stock/StockInClient";
-import { requirePageAdmin } from "@/lib/page-auth";
+import { requirePageAuth } from "@/lib/page-auth";
 
 export default async function StockInPage() {
-  await requirePageAdmin();
+  await requirePageAuth();
 
   return <StockInClient />;
 }

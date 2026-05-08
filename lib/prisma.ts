@@ -1,7 +1,11 @@
 import { PrismaClient } from "../generated/prisma/client";
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
+
+const PRISMA_CLIENT_SCHEMA_VERSION = "product-archiving-20260508";
+
 const globalForPrisma = global as unknown as {
-  prisma: PrismaClient; 
+  prisma?: PrismaClient;
+  prismaSchemaVersion?: string;
 }; 
 const adapter = new PrismaMariaDb({
   host: process.env.DATABASE_HOST,
@@ -14,10 +18,15 @@ const adapter = new PrismaMariaDb({
 });
 
 const prisma =
-  globalForPrisma.prisma ||
-  new PrismaClient({
-    adapter, 
-  }); 
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma; 
-export default prisma; 
+  globalForPrisma.prismaSchemaVersion === PRISMA_CLIENT_SCHEMA_VERSION &&
+  globalForPrisma.prisma
+    ? globalForPrisma.prisma
+    : new PrismaClient({
+        adapter,
+      });
 
+if (process.env.NODE_ENV !== "production") {
+  globalForPrisma.prisma = prisma;
+  globalForPrisma.prismaSchemaVersion = PRISMA_CLIENT_SCHEMA_VERSION;
+}
+export default prisma; 

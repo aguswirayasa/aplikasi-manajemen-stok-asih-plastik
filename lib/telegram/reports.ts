@@ -54,7 +54,13 @@ export async function buildLowStockMessage() {
 }
 
 export async function buildDailyReportMessage() {
-  const data = await getDashboardData();
+  const data = await getDashboardData({ includeOwnerTotals: true });
+  const totals = data.totals;
+
+  if (!totals) {
+    throw new Error("Ringkasan dashboard admin tidak tersedia.");
+  }
+
   const generatedAt = reportDateFormatter.format(new Date());
   const recentTransactions =
     data.recentTransactions.length === 0
@@ -80,10 +86,10 @@ export async function buildDailyReportMessage() {
     `Laporan Stok - ${generatedAt}`,
     "",
     "Ringkasan:",
-    `- Produk: ${data.totals.products}`,
-    `- SKU aktif: ${data.totals.activeSkus}`,
-    `- Total stok: ${data.totals.totalStock}`,
-    `- Stok rendah: ${data.totals.lowStock}`,
+    `- Produk: ${totals.products}`,
+    `- SKU aktif: ${totals.activeSkus}`,
+    `- Total stok: ${totals.totalStock}`,
+    `- Stok rendah: ${totals.lowStock}`,
     `- Barang masuk hari ini: ${data.today.stockIn}`,
     `- Barang keluar hari ini: ${data.today.stockOut}`,
     "",

@@ -4,7 +4,11 @@ import {
   stockTransactionInclude,
 } from "@/lib/stock-transactions";
 
-export async function getDashboardData() {
+export async function getDashboardData({
+  includeOwnerTotals = true,
+}: {
+  includeOwnerTotals?: boolean;
+} = {}) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -19,21 +23,25 @@ export async function getDashboardData() {
     stockIns,
     stockOuts,
   ] = await Promise.all([
-    prisma.product.count(),
-    prisma.productVariant.count({ where: { isActive: true } }),
+    prisma.product.count({ where: { isArchived: false } }),
+    prisma.productVariant.count({
+      where: { isActive: true, product: { is: { isArchived: false } } },
+    }),
     prisma.productVariant.aggregate({
-      where: { isActive: true },
+      where: { isActive: true, product: { is: { isArchived: false } } },
       _sum: { stock: true },
     }),
     prisma.productVariant.count({
       where: {
         isActive: true,
+        product: { is: { isArchived: false } },
         stock: { lte: prisma.productVariant.fields.minStock },
       },
     }),
     prisma.productVariant.findMany({
       where: {
         isActive: true,
+        product: { is: { isArchived: false } },
         stock: { lte: prisma.productVariant.fields.minStock },
       },
       include: {
@@ -74,12 +82,14 @@ export async function getDashboardData() {
   const recentTransactions = mergeStockTransactions(stockIns, stockOuts, 5);
 
   return {
-    totals: {
-      products: totalProducts,
-      activeSkus: totalVariants,
-      totalStock: totalStock._sum.stock || 0,
-      lowStock: lowStockCount,
-    },
+    totals: includeOwnerTotals
+      ? {
+          products: totalProducts,
+          activeSkus: totalVariants,
+          totalStock: totalStock._sum.stock || 0,
+          lowStock: lowStockCount,
+        }
+      : null,
     today: {
       stockIn: stockInsToday._sum.quantity || 0,
       stockOut: stockOutsToday._sum.quantity || 0,

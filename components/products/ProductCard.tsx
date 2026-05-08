@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Edit2, Eye } from "lucide-react";
 import { getProductSummary } from "@/lib/product-summary";
 import { ProductStockStatus } from "@/components/products/ProductStockStatus";
+import { ProductDeleteAction } from "@/components/products/ProductDeleteAction";
 
 type ProductCardProduct = {
   id: string;
@@ -61,13 +62,20 @@ export function ProductCard({
             <Eye className="w-4 h-4" /> Detail
           </Link>
           {canEdit && (
-            <Link
-              href={`/products/${product.id}/edit`}
-              aria-label={`Edit ${product.name}`}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-[#c5c0b1] rounded-[4px] text-[14px] font-semibold text-[#201515] hover:bg-[#eceae3] transition-colors"
-            >
-              <Edit2 className="w-4 h-4" /> Edit
-            </Link>
+            <>
+              <Link
+                href={`/products/${product.id}/edit`}
+                aria-label={`Edit ${product.name}`}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-[#c5c0b1] rounded-[4px] text-[14px] font-semibold text-[#201515] hover:bg-[#eceae3] transition-colors"
+              >
+                <Edit2 className="w-4 h-4" /> Edit
+              </Link>
+              <ProductDeleteAction
+                productId={product.id}
+                productName={product.name}
+                compact
+              />
+            </>
           )}
         </div>
       </div>

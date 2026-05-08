@@ -39,6 +39,10 @@ export default async function ProductEditPage({
     return notFound();
   }
 
+  if (product.isArchived) {
+    return notFound();
+  }
+
   const editProduct = {
     id: product.id,
     name: product.name,

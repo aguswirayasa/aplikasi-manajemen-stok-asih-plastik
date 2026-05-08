@@ -56,7 +56,7 @@ export function StockOutSummary({
           )}
         </div>
 
-        <div className="sticky bottom-16 border-t border-[#c5c0b1] bg-[#fffefb] p-4 lg:static">
+        <div className="border-t border-[#c5c0b1] bg-[#fffefb] p-4">
           <button
             type="submit"
             disabled={submitDisabled}

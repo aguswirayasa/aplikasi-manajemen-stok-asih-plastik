@@ -2,6 +2,7 @@ import Link from "next/link";
 import prisma from "@/lib/prisma";
 import { Edit2, Eye, Plus } from "lucide-react";
 import { ProductCard } from "@/components/products/ProductCard";
+import { ProductDeleteAction } from "@/components/products/ProductDeleteAction";
 import { ProductStockStatus } from "@/components/products/ProductStockStatus";
 import { requirePageAuth } from "@/lib/page-auth";
 import { getProductSummary } from "@/lib/product-summary";
@@ -13,6 +14,7 @@ export default async function ProductsPage() {
   const canEditProducts = user.role === "ADMIN";
 
   const products = await prisma.product.findMany({
+    where: { isArchived: false },
     include: {
       category: true,
       variants: {
@@ -83,13 +85,20 @@ export default async function ProductsPage() {
                           <Eye className="w-4 h-4" /> Detail
                         </Link>
                         {canEditProducts && (
-                          <Link
-                            href={`/products/${product.id}/edit`}
-                            aria-label={`Edit ${product.name}`}
-                            className="inline-flex items-center gap-2 px-3 py-1.5 border border-[#c5c0b1] rounded-[4px] text-[14px] font-semibold text-[#201515] hover:bg-[#eceae3] transition-colors"
-                          >
-                            <Edit2 className="w-4 h-4" /> Edit
-                          </Link>
+                          <>
+                            <Link
+                              href={`/products/${product.id}/edit`}
+                              aria-label={`Edit ${product.name}`}
+                              className="inline-flex items-center gap-2 px-3 py-1.5 border border-[#c5c0b1] rounded-[4px] text-[14px] font-semibold text-[#201515] hover:bg-[#eceae3] transition-colors"
+                            >
+                              <Edit2 className="w-4 h-4" /> Edit
+                            </Link>
+                            <ProductDeleteAction
+                              productId={product.id}
+                              productName={product.name}
+                              compact
+                            />
+                          </>
                         )}
                       </div>
                     </td>

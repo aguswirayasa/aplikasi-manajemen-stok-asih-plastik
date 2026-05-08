@@ -31,11 +31,15 @@ export const POST = withErrorHandler(async (
   const createdVariants = await prisma.$transaction(async (tx) => {
     const product = await tx.product.findUnique({
       where: { id: productId },
-      select: { id: true, name: true },
+      select: { id: true, name: true, isArchived: true },
     });
 
     if (!product) {
       throw new ApiError("Produk tidak ditemukan.", 404);
+    }
+
+    if (product.isArchived) {
+      throw new ApiError("Produk yang sudah diarsipkan tidak bisa diedit.", 409);
     }
 
     return createProductVariants(

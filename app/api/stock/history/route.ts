@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import {
   ApiError,
   apiResponse,
-  requireAdmin,
+  requireAuth,
   withErrorHandler,
 } from "@/lib/api-helpers";
 import prisma from "@/lib/prisma";
@@ -12,7 +12,7 @@ import {
 } from "@/lib/stock-transactions";
 
 export const GET = withErrorHandler(async (req: NextRequest) => {
-  await requireAdmin();
+  await requireAuth();
 
   const { searchParams } = new URL(req.url);
   const rawLimit = Number(searchParams.get("limit") || "50");

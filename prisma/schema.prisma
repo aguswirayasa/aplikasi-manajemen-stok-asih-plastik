@@ -55,6 +55,8 @@ model Product {
   name           String
   description    String?
   image          String?                // Path atau URL gambar produk
+  isArchived     Boolean                @default(false)
+  archivedAt     DateTime?
   categoryId     String
   category       Category               @relation(fields: [categoryId], references: [id])
   variationTypes ProductVariationType[]

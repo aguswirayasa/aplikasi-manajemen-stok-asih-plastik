@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { ArrowLeft, Edit2 } from "lucide-react";
+import { Archive, ArrowLeft, Edit2 } from "lucide-react";
+import { ProductDeleteAction } from "@/components/products/ProductDeleteAction";
 import { ProductStockStatus } from "@/components/products/ProductStockStatus";
 import type { ProductStockStatus as ProductStockStatusData } from "@/lib/product-summary";
 
@@ -30,6 +31,7 @@ export type ProductDetailViewProduct = {
   id: string;
   name: string;
   description: string | null;
+  isArchived: boolean;
   categoryName: string;
   createdAt: Date;
   updatedAt: Date;
@@ -45,6 +47,7 @@ type ProductDetailViewProps = {
   };
   recentMovements: ProductDetailMovement[];
   canEdit: boolean;
+  canDelete: boolean;
 };
 
 const currencyFormatter = new Intl.NumberFormat("id-ID", {
@@ -63,6 +66,7 @@ export function ProductDetailView({
   summary,
   recentMovements,
   canEdit,
+  canDelete,
 }: ProductDetailViewProps) {
   const minimumSummary = getMinimumStockSummary(product.variants);
 
@@ -84,6 +88,12 @@ export function ProductDetailView({
             <p className="text-[#36342e] text-[16px] leading-[1.25]">
               {product.categoryName}
             </p>
+            {product.isArchived && (
+              <span className="mt-3 inline-flex items-center gap-2 rounded-[20px] bg-[#eceae3] px-3 py-1 text-[13px] font-semibold text-[#6f6a5f]">
+                <Archive className="h-4 w-4" />
+                Diarsipkan
+              </span>
+            )}
           </div>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 md:flex md:flex-wrap md:justify-end">
             {canEdit && (
@@ -94,8 +104,24 @@ export function ProductDetailView({
                 <Edit2 className="h-4 w-4" /> Edit
               </Link>
             )}
+            {canDelete && (
+              <ProductDeleteAction
+                productId={product.id}
+                productName={product.name}
+                redirectTo="/products"
+              />
+            )}
           </div>
         </header>
+
+        {product.isArchived && (
+          <section className="mb-6 rounded-[8px] border border-[#c5c0b1] bg-[#eceae3]/40 p-4">
+            <p className="text-[14px] leading-[1.4] text-[#36342e]">
+              Produk ini sudah diarsipkan. Riwayat stok tetap tersimpan, tetapi
+              produk tidak muncul di katalog aktif atau pilihan transaksi stok.
+            </p>
+          </section>
+        )}
 
         <section className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <SummaryCard
@@ -380,7 +406,7 @@ function getMinimumStockSummary(
     return "Belum diatur";
   }
 
-  return `${lowVariants.length}/${watchedVariants.length} perlu perhatian`;
+  return `${lowVariants.length} SKU di bawah minimum`;
 }
 
 function formatVariantValues(values: ProductDetailVariant["values"]) {

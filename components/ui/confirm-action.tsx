@@ -51,7 +51,7 @@ export function ConfirmAction({
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4">
-          <div className="w-full max-w-sm rounded-[8px] border border-[#c5c0b1] bg-[#fffefb] p-5 shadow-xl">
+          <div className="w-full max-w-[480px] rounded-[8px] border border-[#c5c0b1] bg-[#fffefb] p-5 text-left shadow-xl">
             <h2 className="text-[18px] font-bold text-[#201515]">{title}</h2>
             <p className="mt-2 text-[14px] leading-[1.4] text-[#36342e]">
               {message}

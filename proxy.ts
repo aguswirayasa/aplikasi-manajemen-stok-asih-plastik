@@ -27,7 +27,7 @@ export default withAuth(
           "/variations",
           "/users",
         ];
-        const adminPrefixes = ["/stock/in", "/stock/history", "/variations", "/users"];
+        const adminPrefixes = ["/telegram", "/variations", "/users"];
         const isProductAdminRoute =
           req.nextUrl.pathname === "/products/new" ||
           (req.nextUrl.pathname.startsWith("/products/") &&
@@ -40,7 +40,7 @@ export default withAuth(
         );
 
         if (isAdminOnly || isProductAdminRoute) {
-          return !!token;
+          return token?.role === "ADMIN";
         }
 
         if (isProtected) {

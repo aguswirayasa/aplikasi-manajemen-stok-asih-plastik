@@ -4,12 +4,13 @@ import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Eye, EyeOff, Loader2, Package } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -40,29 +41,18 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen w-full flex-col items-center justify-center bg-[#fffefb] p-4 sm:p-8">
-      <div className="mb-8 flex flex-col items-center">
+      <div className="mb-8 flex flex-col items-center text-center">
         <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-[8px] bg-[#ff4f00] text-[#fffefb]">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="h-6 w-6"
-          >
-            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-            <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
-            <line x1="12" y1="22.08" x2="12" y2="12" />
-          </svg>
+          <Package className="h-6 w-6" aria-hidden="true" />
         </div>
-        <h1 className="text-[32px] font-semibold tracking-tight text-[#201515]">
-          Manajemen Stok
+        <h1 className="text-[32px] uppercase font-bold tracking-tight text-[#201515]">
+          Asih Plastik
         </h1>
+        <p className="mb-1 text-[13px] font-semibold tracking-[0.5px] text-[#ff4f00] uppercase">
+          Manajemen Stok
+        </p>
       </div>
 
-      {/* Login Card Container */}
       <div className="w-full max-w-[440px] rounded-[5px] border border-[#c5c0b1] bg-[#fffefb] p-6 shadow-none sm:p-10">
         <div className="mb-8">
           <h2 className="text-[24px] font-semibold tracking-tight text-[#201515]">
@@ -99,15 +89,32 @@ export default function LoginPage() {
             >
               Password
             </label>
-            <input
-              id="password"
-              type="password"
-              placeholder="********"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-[5px] border border-[#c5c0b1] bg-[#fffefb] px-4 py-3 text-[16px] text-[#201515] placeholder:text-[#939084] outline-none transition-colors focus-visible:border-[#ff4f00] focus-visible:ring-1 focus-visible:ring-[#ff4f00]"
-            />
+            <div className="relative">
+              <input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                placeholder="********"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full rounded-[5px] border border-[#c5c0b1] bg-[#fffefb] py-3 pr-12 pl-4 text-[16px] text-[#201515] placeholder:text-[#939084] outline-none transition-colors focus-visible:border-[#ff4f00] focus-visible:ring-1 focus-visible:ring-[#ff4f00]"
+              />
+              <button
+                type="button"
+                aria-label={
+                  showPassword ? "Sembunyikan password" : "Tampilkan password"
+                }
+                aria-pressed={showPassword}
+                onClick={() => setShowPassword((current) => !current)}
+                className="absolute top-1/2 right-3 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-[4px] text-[#939084] transition-colors hover:bg-[#f4f0e6] hover:text-[#201515] focus-visible:ring-1 focus-visible:ring-[#ff4f00] focus-visible:outline-none"
+              >
+                {showPassword ? (
+                  <EyeOff className="h-5 w-5" aria-hidden="true" />
+                ) : (
+                  <Eye className="h-5 w-5" aria-hidden="true" />
+                )}
+              </button>
+            </div>
           </div>
 
           <button
@@ -129,7 +136,7 @@ export default function LoginPage() {
 
       <div className="mt-8 text-center">
         <p className="text-[14px] text-[#939084]">
-          Akses dilindungi berdasarkan role user.
+          Copyright © 2026 Asih Plastik. All rights reserved.
         </p>
       </div>
     </div>

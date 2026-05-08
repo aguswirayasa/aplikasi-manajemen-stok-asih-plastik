@@ -24,16 +24,16 @@ export function StockInClient() {
   const [loading, setLoading] = useState(false);
 
   const hasInvalidQuantity = lines.some(
-    (line) => typeof line.quantity !== "number" || line.quantity <= 0
+    (line) => typeof line.quantity !== "number" || line.quantity <= 0,
   );
   const totalQuantity = useMemo(
     () =>
       lines.reduce(
         (total, line) =>
           total + (typeof line.quantity === "number" ? line.quantity : 0),
-        0
+        0,
       ),
-    [lines]
+    [lines],
   );
 
   const handleAddVariant = (variant: StockVariantOption) => {
@@ -48,8 +48,8 @@ export function StockInClient() {
   const updateQuantity = (lineId: string, quantity: number | "") => {
     setLines((current) =>
       current.map((line) =>
-        line.lineId === lineId ? { ...line, quantity } : line
-      )
+        line.lineId === lineId ? { ...line, quantity } : line,
+      ),
     );
   };
 
@@ -92,11 +92,12 @@ export function StockInClient() {
       }
 
       toast.success(data.message || "Stok masuk berhasil dicatat.");
-      router.push("/stock/history");
+      setLines([]);
+      setNote("");
       router.refresh();
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Gagal mencatat stok masuk."
+        error instanceof Error ? error.message : "Gagal mencatat stok masuk.",
       );
     } finally {
       setLoading(false);
@@ -112,7 +113,7 @@ export function StockInClient() {
             Barang Masuk
           </h1>
           <p className="mt-1 text-[15px] leading-[1.25] text-[#939084]">
-            Tambahkan beberapa SKU dalam satu catatan stok masuk.
+            Catat kiriman baru dari supplier.
           </p>
         </div>
       </header>
@@ -170,7 +171,7 @@ export function StockInClient() {
           </div>
         </div>
 
-        <div className="sticky bottom-16 border-t border-[#c5c0b1] bg-[#fffefb] p-4 sm:static sm:p-6">
+        <div className="border-t border-[#c5c0b1] bg-[#fffefb] p-4 sm:static sm:p-6">
           <div className="mb-3 flex items-center justify-between text-[13px] font-semibold text-[#36342e]">
             <span>Total SKU: {lines.length}</span>
             <span>Total qty: {totalQuantity}</span>

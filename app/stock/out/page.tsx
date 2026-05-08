@@ -161,7 +161,7 @@ export default function StockOutPage() {
               Checkout Barang Keluar
             </h1>
             <p className="mt-1 text-[15px] leading-[1.25] text-[#939084]">
-              Cari SKU, susun cart, cek stok, lalu selesaikan transaksi.
+              Catat barang keluar dalam satu transaksi kasir.
             </p>
           </div>
         </div>
