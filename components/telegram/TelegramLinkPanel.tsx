@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Copy, Link2, Loader2, MessageCircle, Unlink } from "lucide-react";
 import { toast } from "sonner";
 
@@ -28,6 +28,7 @@ export function TelegramLinkPanel() {
   const [token, setToken] = useState<TelegramToken | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const commandInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -68,7 +69,7 @@ export function TelegramLinkPanel() {
 
       setToken(data);
       setStatus(data);
-      toast.success("Kode Telegram berhasil dibuat.");
+      toast.success("Kode hubungkan berhasil dibuat.");
     } catch (error: unknown) {
       toast.error(getErrorMessage(error));
     } finally {
@@ -87,7 +88,7 @@ export function TelegramLinkPanel() {
 
       setStatus(data);
       setToken(null);
-      toast.success("Telegram berhasil diputus.");
+      toast.success("Koneksi Telegram berhasil diputus.");
     } catch (error: unknown) {
       toast.error(getErrorMessage(error));
     } finally {
@@ -100,12 +101,16 @@ export function TelegramLinkPanel() {
       return;
     }
 
-    try {
-      await navigator.clipboard.writeText(token.command);
-      toast.success("Perintah link disalin.");
-    } catch {
-      toast.error("Perintah link tidak bisa disalin otomatis.");
+    const copied = await copyTextToClipboard(token.command, commandInputRef.current);
+
+    if (copied) {
+      toast.success("Teks untuk Telegram berhasil disalin.");
+      return;
     }
+
+    commandInputRef.current?.focus();
+    commandInputRef.current?.select();
+    toast.message("Teks sudah dipilih. Tekan lama teksnya, lalu pilih Salin.");
   }
 
   return (
@@ -120,7 +125,7 @@ export function TelegramLinkPanel() {
               Telegram
             </h2>
             <p className="text-[13px] leading-[1.35] text-[#36342e]">
-              Hubungkan akun untuk bot stok dan laporan admin.
+              Pakai chat Telegram untuk cek stok dan menerima laporan toko.
             </p>
           </div>
         </div>
@@ -132,7 +137,7 @@ export function TelegramLinkPanel() {
             className="inline-flex min-h-10 items-center justify-center gap-2 rounded-[5px] border border-[#c5c0b1] bg-[#fffefb] px-4 text-[13px] font-bold text-[#201515] transition-colors hover:bg-[#eceae3] disabled:cursor-not-allowed disabled:opacity-60"
           >
             <Unlink className="h-4 w-4" />
-            Putuskan
+            Putuskan Telegram
           </button>
         ) : (
           <button
@@ -146,7 +151,7 @@ export function TelegramLinkPanel() {
             ) : (
               <Link2 className="h-4 w-4" />
             )}
-            Buat Kode
+            Buat Kode Hubungkan
           </button>
         )}
       </div>
@@ -158,7 +163,7 @@ export function TelegramLinkPanel() {
             Memuat status Telegram...
           </div>
         ) : status?.linked ? (
-          <div className="grid gap-1 text-[14px] text-[#36342e]">
+          <div className="grid gap-2 text-[14px] text-[#36342e]">
             <p className="font-semibold text-[#201515]">Status: terhubung</p>
             <p>
               Akun Telegram:{" "}
@@ -168,23 +173,38 @@ export function TelegramLinkPanel() {
                   : "Tanpa username"}
               </span>
             </p>
+            <p className="leading-[1.35]">
+              Akun ini sudah siap dipakai di Telegram. Tidak perlu membuat kode
+              lagi, kecuali ingin mengganti akun Telegram.
+            </p>
           </div>
         ) : token ? (
           <div className="grid gap-3">
             <p className="text-[14px] leading-[1.35] text-[#36342e]">
-              Kirim perintah ini ke bot Telegram sebelum kode kedaluwarsa.
+              Ikuti langkah ini sebelum kode kedaluwarsa:
             </p>
+            <ol className="grid list-decimal gap-1 pl-5 text-[14px] leading-[1.35] text-[#36342e]">
+              <li>Buka aplikasi Telegram di HP.</li>
+              <li>Buka chat bot Telegram toko.</li>
+              <li>Salin teks di bawah ini, lalu kirim ke chat bot.</li>
+              <li>Tunggu balasan bahwa akun berhasil terhubung.</li>
+            </ol>
             <div className="flex flex-col gap-2 sm:flex-row">
-              <code className="min-h-11 flex-1 rounded-[5px] border border-[#c5c0b1] bg-[#eceae3]/35 px-3 py-2 text-[15px] font-bold text-[#201515]">
-                {token.command}
-              </code>
+              <input
+                ref={commandInputRef}
+                aria-label="Teks untuk dikirim ke bot Telegram"
+                readOnly
+                value={token.command}
+                onFocus={(event) => event.currentTarget.select()}
+                className="min-h-11 flex-1 rounded-[5px] border border-[#c5c0b1] bg-[#eceae3]/35 px-3 py-2 text-[15px] font-bold text-[#201515] outline-none focus:border-[#ff4f00] focus:ring-2 focus:ring-[#ff4f00]/20"
+              />
               <button
                 type="button"
                 onClick={copyCommand}
                 className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[5px] border border-[#c5c0b1] bg-[#fffefb] px-4 text-[13px] font-bold text-[#201515] transition-colors hover:bg-[#eceae3]"
               >
                 <Copy className="h-4 w-4" />
-                Salin
+                Salin Teks
               </button>
             </div>
             <p className="text-[12px] font-semibold text-[#939084]">
@@ -193,8 +213,8 @@ export function TelegramLinkPanel() {
           </div>
         ) : (
           <p className="text-[14px] leading-[1.35] text-[#36342e]">
-            Belum terhubung. Buat kode dari akun webapp ini, lalu kirim kode ke
-            bot Telegram.
+            Belum terhubung. Tekan tombol Buat Kode Hubungkan, lalu ikuti
+            langkah yang muncul untuk menyambungkan Telegram.
           </p>
         )}
       </div>
@@ -207,7 +227,7 @@ async function requestTelegramApi<T>(url: string, init?: RequestInit) {
   const payload = (await response.json()) as ApiEnvelope<T>;
 
   if (!response.ok || !payload.success || !payload.data) {
-    throw new Error(payload.error || "Permintaan Telegram gagal.");
+    throw new Error(payload.error || "Permintaan ke Telegram gagal.");
   }
 
   return payload.data;
@@ -215,4 +235,31 @@ async function requestTelegramApi<T>(url: string, init?: RequestInit) {
 
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Terjadi kesalahan.";
+}
+
+async function copyTextToClipboard(
+  text: string,
+  fallbackInput: HTMLInputElement | null
+) {
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      // Browser HP kadang menolak Clipboard API di halaman lokal atau WebView.
+    }
+  }
+
+  if (fallbackInput) {
+    fallbackInput.focus();
+    fallbackInput.select();
+
+    try {
+      return document.execCommand("copy");
+    } catch {
+      return false;
+    }
+  }
+
+  return false;
 }

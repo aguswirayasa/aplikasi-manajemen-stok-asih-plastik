@@ -3,6 +3,8 @@ import { getDashboardData } from "@/lib/dashboard-data";
 import { sendTelegramMessage } from "@/lib/telegram/client";
 import type { LinkedTelegramUser } from "@/lib/telegram/types";
 
+export type TelegramReportKind = "opening" | "closing" | "daily";
+
 const reportDateFormatter = new Intl.DateTimeFormat("id-ID", {
   timeZone: "Asia/Singapore",
   day: "2-digit",
@@ -31,6 +33,22 @@ function formatVariation(values: LowStockVariant["values"]) {
   );
 }
 
+function formatActionSection(variants: LowStockVariant[]) {
+  if (variants.length === 0) {
+    return "Perlu Dicek:\n- Semua SKU aktif masih aman.";
+  }
+
+  return [
+    "Perlu Dicek:",
+    ...variants.map(
+      (variant, index) =>
+        `${index + 1}. ${variant.sku} - ${variant.product.name} (${formatVariation(
+          variant.values
+        )})\n   Stok ${variant.stock}, minimum ${variant.minStock}`
+    ),
+  ].join("\n");
+}
+
 function formatLowStockSection(variants: LowStockVariant[]) {
   if (variants.length === 0) {
     return "Stok minimum:\n- Semua SKU aktif masih aman.";
@@ -48,13 +66,16 @@ function formatLowStockSection(variants: LowStockVariant[]) {
 }
 
 export async function buildLowStockMessage() {
-  const data = await getDashboardData();
+  const data = await getDashboardData({ lowStockLimit: 20 });
 
   return formatLowStockSection(data.lowStockVariants);
 }
 
-export async function buildDailyReportMessage() {
-  const data = await getDashboardData({ includeOwnerTotals: true });
+export async function buildDailyReportMessage(kind: TelegramReportKind = "daily") {
+  const data = await getDashboardData({
+    includeOwnerTotals: true,
+    lowStockLimit: 20,
+  });
   const totals = data.totals;
 
   if (!totals) {
@@ -64,9 +85,9 @@ export async function buildDailyReportMessage() {
   const generatedAt = reportDateFormatter.format(new Date());
   const recentTransactions =
     data.recentTransactions.length === 0
-      ? ["Transaksi terbaru:", "- Belum ada transaksi terbaru."]
+      ? ["Pergerakan terbaru:", "- Belum ada pergerakan stok terbaru."]
       : [
-          "Transaksi terbaru:",
+          "Pergerakan terbaru:",
           ...data.recentTransactions.map((transaction) => {
             const direction = transaction.type === "IN" ? "Masuk" : "Keluar";
             const signedQuantity =
@@ -83,23 +104,23 @@ export async function buildDailyReportMessage() {
         ];
 
   return [
-    `Laporan Stok - ${generatedAt}`,
+    `${formatReportTitle(kind)} - ${generatedAt}`,
     "",
-    "Ringkasan:",
-    `- Produk: ${totals.products}`,
-    `- SKU aktif: ${totals.activeSkus}`,
-    `- Total stok: ${totals.totalStock}`,
-    `- Stok rendah: ${totals.lowStock}`,
+    formatActionSection(data.lowStockVariants),
+    "",
+    "Ringkasan hari ini:",
     `- Barang masuk hari ini: ${data.today.stockIn}`,
     `- Barang keluar hari ini: ${data.today.stockOut}`,
-    "",
-    formatLowStockSection(data.lowStockVariants),
+    `- SKU aktif: ${totals.activeSkus}`,
+    `- Produk aktif: ${totals.products}`,
+    `- Total stok: ${totals.totalStock}`,
+    `- SKU perlu dicek: ${totals.lowStock}`,
     "",
     ...recentTransactions,
   ].join("\n");
 }
 
-export async function sendDailyTelegramReport() {
+export async function sendTelegramReport(kind: TelegramReportKind = "daily") {
   const recipients = await prisma.user.findMany({
     where: {
       role: "ADMIN",
@@ -113,7 +134,7 @@ export async function sendDailyTelegramReport() {
       name: true,
     },
   });
-  const message = await buildDailyReportMessage();
+  const message = await buildDailyReportMessage(kind);
 
   const results = await Promise.allSettled(
     recipients.map((recipient) =>
@@ -133,6 +154,22 @@ export async function sendDailyTelegramReport() {
   };
 }
 
+export async function sendDailyTelegramReport() {
+  return sendTelegramReport("daily");
+}
+
 export function formatLinkedUser(user: LinkedTelegramUser) {
   return `${user.name || user.username} (${user.role})`;
+}
+
+function formatReportTitle(kind: TelegramReportKind) {
+  if (kind === "opening") {
+    return "Laporan Buka Toko";
+  }
+
+  if (kind === "closing") {
+    return "Laporan Tutup Toko";
+  }
+
+  return "Laporan Stok";
 }

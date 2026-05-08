@@ -21,8 +21,8 @@ export default async function TelegramPage() {
             Koneksi Telegram
           </h1>
           <p className="mt-2 max-w-[620px] text-[15px] leading-[1.35] text-[#36342e]">
-            Hubungkan akun Telegram untuk memakai bot stok dan menerima laporan
-            operasional.
+            Sambungkan Telegram agar stok bisa dicek lewat chat dan laporan
+            toko bisa masuk langsung ke HP.
           </p>
         </div>
       </header>

@@ -10,7 +10,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:telegram": "tsx scripts/test-telegram-guided.ts"
   },
   "dependencies": {
     "@prisma/adapter-mariadb": "^7.8.0",

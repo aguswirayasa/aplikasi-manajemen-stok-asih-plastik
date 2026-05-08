@@ -6,8 +6,10 @@ import {
 
 export async function getDashboardData({
   includeOwnerTotals = true,
+  lowStockLimit = 5,
 }: {
   includeOwnerTotals?: boolean;
+  lowStockLimit?: number;
 } = {}) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -57,7 +59,7 @@ export async function getDashboardData({
         },
       },
       orderBy: [{ stock: "asc" }, { sku: "asc" }],
-      take: 5,
+      take: lowStockLimit,
     }),
     prisma.stockIn.aggregate({
       where: { createdAt: { gte: today } },
