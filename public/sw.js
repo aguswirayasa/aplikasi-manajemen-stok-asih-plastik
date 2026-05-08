@@ -1,5 +1,9 @@
 const CACHE_NAME = "stock-management-static-v1";
-const STATIC_ASSETS = ["/offline.html", "/icons/stock-icon.svg"];
+const STATIC_ASSETS = [
+  "/offline.html",
+  "/icons/app-icon-192.png",
+  "/icons/app-icon-512.png",
+];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(

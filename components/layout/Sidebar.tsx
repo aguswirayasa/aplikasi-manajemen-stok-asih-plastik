@@ -15,7 +15,6 @@ import {
   LogOut,
 } from "lucide-react";
 import { signOut, useSession } from "next-auth/react";
-import { InstallAppButton } from "@/components/pwa/InstallAppButton";
 
 const mainNavItems = [
   { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },

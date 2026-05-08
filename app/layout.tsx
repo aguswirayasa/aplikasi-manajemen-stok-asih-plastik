@@ -20,12 +20,33 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Stock Management",
+  title: "Asih Plastik Stok Manager",
   description: "Sistem manajemen stok multivariasi.",
-  applicationName: "Stock Management",
+  applicationName: "Asih Plastik Stok Manager",
+  icons: {
+    icon: [
+      {
+        url: "/icons/app-icon-32.png",
+        sizes: "32x32",
+        type: "image/png",
+      },
+      {
+        url: "/icons/app-icon-16.png",
+        sizes: "16x16",
+        type: "image/png",
+      },
+    ],
+    apple: [
+      {
+        url: "/icons/app-icon-180.png",
+        sizes: "180x180",
+        type: "image/png",
+      },
+    ],
+  },
   appleWebApp: {
     capable: true,
-    title: "Stock",
+    title: "Asih Stok",
     statusBarStyle: "default",
   },
   formatDetection: {
