@@ -28,9 +28,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <div className="w-6 h-6 rounded bg-[#ff4f00] flex items-center justify-center">
               <Package className="w-3.5 h-3.5 text-white" />
             </div>
-            <span className="text-sm font-semibold text-[#201515]">
-              Stock System
-            </span>
+            <div>
+              <span className="text-[16px] font-semibold text-[#201515] tracking-tight">
+                Asih Plastik
+              </span>
+              <p className="text-[10px] font-semibold tracking-[0.5px] text-[#ff4f00] uppercase">
+                Manajemen Stok
+              </p>
+            </div>
           </div>
         </header>
 

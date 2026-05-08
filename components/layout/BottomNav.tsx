@@ -17,6 +17,10 @@ import {
   X,
 } from "lucide-react";
 import { useSession } from "next-auth/react";
+import {
+  InstallAppAction,
+  useInstallAppPrompt,
+} from "@/components/pwa/InstallAppButton";
 
 const mobileNavItems = [
   { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -36,6 +40,7 @@ export function BottomNav() {
   const pathname = usePathname();
   const { data: session } = useSession();
   const [isMoreOpen, setIsMoreOpen] = useState(false);
+  const { canInstall, installApp } = useInstallAppPrompt();
 
   useEffect(() => {
     if (!isMoreOpen) return;
@@ -53,13 +58,19 @@ export function BottomNav() {
   if (!session?.user) return null;
 
   const isAdmin = session.user.role === "ADMIN";
+  const showMoreMenu = isAdmin || canInstall;
   const isMoreActive = adminNavItems.some(
     (item) => pathname === item.href || pathname.startsWith(item.href + "/")
   );
 
+  const handleInstallApp = async () => {
+    await installApp();
+    setIsMoreOpen(false);
+  };
+
   return (
     <>
-      {isAdmin && isMoreOpen && (
+      {showMoreMenu && isMoreOpen && (
         <div className="fixed inset-0 z-40 md:hidden">
           <button
             type="button"
@@ -71,21 +82,21 @@ export function BottomNav() {
             id="mobile-admin-menu"
             role="dialog"
             aria-modal="true"
-            aria-label="Menu admin"
+            aria-label="Menu lainnya"
             className="absolute bottom-20 left-3 right-3 overflow-hidden rounded border border-[#c5c0b1] bg-[#fffefb] shadow-[0_18px_45px_rgba(32,21,21,0.18)]"
           >
             <div className="flex items-center justify-between border-b border-[#eceae3] px-4 py-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.5px] text-[#939084]">
-                  Menu Admin
+                  Menu Lainnya
                 </p>
                 <p className="text-sm font-semibold text-[#201515]">
-                  Lainnya
+                  Aksi tambahan
                 </p>
               </div>
               <button
                 type="button"
-                aria-label="Tutup menu admin"
+                aria-label="Tutup menu lainnya"
                 className="flex h-9 w-9 items-center justify-center rounded text-[#939084] transition-colors hover:bg-[#eceae3] hover:text-[#201515]"
                 onClick={() => setIsMoreOpen(false)}
               >
@@ -93,32 +104,34 @@ export function BottomNav() {
               </button>
             </div>
             <div className="grid gap-1 p-2">
-              {adminNavItems.map((item) => {
-                const isActive =
-                  pathname === item.href ||
-                  pathname.startsWith(item.href + "/");
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={() => setIsMoreOpen(false)}
-                    className={cn(
-                      "flex items-center gap-3 rounded px-3 py-3 text-sm font-medium transition-colors",
-                      isActive
-                        ? "bg-[#eceae3] text-[#201515]"
-                        : "text-[#36342e] hover:bg-[#eceae3] hover:text-[#201515]"
-                    )}
-                  >
-                    <item.icon
+              {isAdmin &&
+                adminNavItems.map((item) => {
+                  const isActive =
+                    pathname === item.href ||
+                    pathname.startsWith(item.href + "/");
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={() => setIsMoreOpen(false)}
                       className={cn(
-                        "h-5 w-5 flex-shrink-0",
-                        isActive ? "text-[#ff4f00]" : "text-[#939084]"
+                        "flex items-center gap-3 rounded px-3 py-3 text-sm font-medium transition-colors",
+                        isActive
+                          ? "bg-[#eceae3] text-[#201515]"
+                          : "text-[#36342e] hover:bg-[#eceae3] hover:text-[#201515]"
                       )}
-                    />
-                    <span>{item.title}</span>
-                  </Link>
-                );
-              })}
+                    >
+                      <item.icon
+                        className={cn(
+                          "h-5 w-5 flex-shrink-0",
+                          isActive ? "text-[#ff4f00]" : "text-[#939084]"
+                        )}
+                      />
+                      <span>{item.title}</span>
+                    </Link>
+                  );
+                })}
+              {canInstall && <InstallAppAction onClick={handleInstallApp} />}
             </div>
           </div>
         </div>
@@ -148,7 +161,7 @@ export function BottomNav() {
             </Link>
           );
         })}
-        {isAdmin && (
+        {showMoreMenu && (
           <button
             type="button"
             aria-expanded={isMoreOpen}

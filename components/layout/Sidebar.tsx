@@ -15,6 +15,7 @@ import {
   LogOut,
 } from "lucide-react";
 import { signOut, useSession } from "next-auth/react";
+import { InstallAppButton } from "@/components/pwa/InstallAppButton";
 
 const mainNavItems = [
   { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -43,19 +44,22 @@ export function Sidebar() {
       className="hidden md:flex w-60 flex-col min-h-screen sticky top-0 border-r border-[#c5c0b1] bg-[#fffefb]"
       style={{ fontFamily: "Inter, Helvetica, Arial, sans-serif" }}
     >
-      {/* Brand */}
       <div className="px-6 py-5 border-b border-[#eceae3]">
         <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 rounded bg-[#ff4f00] flex items-center justify-center flex-shrink-0">
             <Package className="w-4 h-4 text-white" />
           </div>
-          <span className="text-[15px] font-semibold text-[#201515] tracking-tight">
-            Stock System
-          </span>
+          <div>
+            <span className="text-[16px] font-semibold text-[#201515] tracking-tight">
+              Asih Plastik
+            </span>
+            <p className="text-[10px] font-semibold tracking-[0.5px] text-[#ff4f00] uppercase">
+              Manajemen Stok
+            </p>
+          </div>
         </div>
       </div>
 
-      {/* Nav */}
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
         <p className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-widest text-[#939084]">
           Menu Utama
@@ -165,7 +169,6 @@ export function Sidebar() {
         )}
       </nav>
 
-      {/* Footer */}
       <div className="px-3 py-3 border-t border-[#eceae3]">
         <div className="flex items-center gap-2.5 px-3 py-2.5 rounded bg-[#eceae3] mb-1">
           <div className="w-7 h-7 rounded-full bg-[#201515] flex items-center justify-center text-[#fffefb] text-xs font-bold flex-shrink-0">
