@@ -14,12 +14,19 @@ export function DashboardOverview({
   displayName: string;
   isAdmin: boolean;
 }) {
+  const shouldStretchPanels =
+    data.lowStockVariants.length >= 5 && data.recentTransactions.length >= 5;
+
   return (
     <div className="space-y-6 pb-8">
       <DashboardHeader displayName={displayName} />
       {isAdmin && data.totals && <DashboardStatCards totals={data.totals} />}
       <DashboardTodayCards today={data.today} />
-      <section className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(340px,0.8fr)]">
+      <section
+        className={`grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(340px,0.8fr)] ${
+          shouldStretchPanels ? "lg:items-stretch" : ""
+        }`}
+      >
         <LowStockPanel variants={data.lowStockVariants} />
         <RecentTransactionsPanel transactions={data.recentTransactions} />
       </section>
