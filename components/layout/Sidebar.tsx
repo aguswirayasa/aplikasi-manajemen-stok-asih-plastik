@@ -11,6 +11,7 @@ import {
   History,
   MessageCircle,
   Settings2,
+  Tags,
   Users,
   LogOut,
 } from "lucide-react";
@@ -25,6 +26,7 @@ const mainNavItems = [
 ];
 
 const adminNavItems = [
+  { title: "Kategori", href: "/categories", icon: Tags },
   { title: "Variasi Global", href: "/variations", icon: Settings2 },
   { title: "Manajemen User", href: "/users", icon: Users },
 ];

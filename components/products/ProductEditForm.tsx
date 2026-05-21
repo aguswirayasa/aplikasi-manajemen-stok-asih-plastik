@@ -5,12 +5,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertCircle, ArrowLeft, Save } from "lucide-react";
 import { toast } from "sonner";
+import { CategoryQuickAdd } from "@/components/categories/CategoryQuickAdd";
 import { ConfirmAction } from "@/components/ui/confirm-action";
-
-type ProductEditCategory = {
-  id: string;
-  name: string;
-};
+import type { Category } from "@/types/categories";
 
 type ProductEditVariant = {
   id: string;
@@ -36,7 +33,7 @@ type ProductEditProduct = {
 
 type ProductEditFormProps = {
   product: ProductEditProduct;
-  categories: ProductEditCategory[];
+  categories: Category[];
 };
 
 type VariantDraft = {
@@ -82,6 +79,7 @@ export function ProductEditForm({
     createSnapshot(initialDraft)
   );
   const [saving, setSaving] = useState(false);
+  const [categoryOptions, setCategoryOptions] = useState(categories);
 
   const currentSnapshot = useMemo(() => createSnapshot(draft), [draft]);
   const dirty = currentSnapshot !== savedSnapshot;
@@ -184,6 +182,16 @@ export function ProductEditForm({
     router.push(`/products/${product.id}`);
   };
 
+  const handleCategoryCreated = (category: Category) => {
+    setCategoryOptions((current) =>
+      [...current, category].sort((a, b) => a.name.localeCompare(b.name))
+    );
+    setDraft((current) => ({
+      ...current,
+      categoryId: category.id,
+    }));
+  };
+
   return (
     <div className="space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -220,23 +228,29 @@ export function ProductEditForm({
             <label className="mb-2 block text-[14px] font-bold text-[#201515]">
               Kategori
             </label>
-            <select
-              value={draft.categoryId}
-              onChange={(event) =>
-                setDraft((current) => ({
-                  ...current,
-                  categoryId: event.target.value,
-                }))
-              }
-              className="min-h-12 w-full rounded-[5px] border border-[#c5c0b1] bg-[#fffefb] px-3 text-[15px] text-[#201515] outline-none focus:border-[#ff4f00]"
-            >
-              <option value="">Pilih kategori...</option>
-              {categories.map((category) => (
-                <option key={category.id} value={category.id}>
-                  {category.name}
-                </option>
-              ))}
-            </select>
+            <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+              <select
+                value={draft.categoryId}
+                onChange={(event) =>
+                  setDraft((current) => ({
+                    ...current,
+                    categoryId: event.target.value,
+                  }))
+                }
+                className="min-h-12 w-full rounded-[5px] border border-[#c5c0b1] bg-[#fffefb] px-3 text-[15px] text-[#201515] outline-none focus:border-[#ff4f00]"
+              >
+                <option value="">Pilih kategori...</option>
+                {categoryOptions.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+              <CategoryQuickAdd
+                onCreated={handleCategoryCreated}
+                triggerLabel="Tambah"
+              />
+            </div>
           </div>
           <div className="md:col-span-2">
             <label className="mb-2 block text-[14px] font-bold text-[#201515]">

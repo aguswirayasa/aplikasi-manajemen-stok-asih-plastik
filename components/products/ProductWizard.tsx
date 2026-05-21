@@ -13,8 +13,9 @@ import {
   Square,
 } from "lucide-react";
 import { toast } from "sonner";
+import { CategoryQuickAdd } from "@/components/categories/CategoryQuickAdd";
+import type { Category } from "@/types/categories";
 
-type Category = { id: string; name: string };
 type VariationValue = { id: string; value: string };
 type VariationType = { id: string; name: string; values: VariationValue[] };
 
@@ -69,6 +70,7 @@ export function ProductWizard({
   const [name, setName] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [description, setDescription] = useState("");
+  const [categoryOptions, setCategoryOptions] = useState(categories);
 
   const [selectedVariations, setSelectedVariations] = useState<
     Record<string, string[]>
@@ -130,7 +132,7 @@ export function ProductWizard({
     [selectedCombinations, variantDrafts],
   );
   const selectedCategoryName =
-    categories.find((category) => category.id === categoryId)?.name ?? "-";
+    categoryOptions.find((category) => category.id === categoryId)?.name ?? "-";
   const allCombinationsSelected =
     combinations.length > 0 &&
     selectedCombinations.length === combinations.length;
@@ -251,6 +253,13 @@ export function ProductWizard({
 
   const clearCombinationSelection = () => {
     setSelectedCombinationKeys([]);
+  };
+
+  const handleCategoryCreated = (category: Category) => {
+    setCategoryOptions((current) =>
+      [...current, category].sort((a, b) => a.name.localeCompare(b.name)),
+    );
+    setCategoryId(category.id);
   };
 
   const updateVariantDraft = (
@@ -409,18 +418,24 @@ export function ProductWizard({
               />
             </Field>
             <Field label="Kategori">
-              <select
-                value={categoryId}
-                onChange={(event) => setCategoryId(event.target.value)}
-                className="min-h-12 w-full rounded-[5px] border border-[#c5c0b1] bg-[#fffefb] px-3 text-[15px] text-[#201515] outline-none focus:border-[#ff4f00]"
-              >
-                <option value="">Pilih kategori...</option>
-                {categories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
+              <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+                <select
+                  value={categoryId}
+                  onChange={(event) => setCategoryId(event.target.value)}
+                  className="min-h-12 w-full rounded-[5px] border border-[#c5c0b1] bg-[#fffefb] px-3 text-[15px] text-[#201515] outline-none focus:border-[#ff4f00]"
+                >
+                  <option value="">Pilih kategori...</option>
+                  {categoryOptions.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+                <CategoryQuickAdd
+                  onCreated={handleCategoryCreated}
+                  triggerLabel="Tambah"
+                />
+              </div>
             </Field>
             <Field label="Deskripsi">
               <textarea

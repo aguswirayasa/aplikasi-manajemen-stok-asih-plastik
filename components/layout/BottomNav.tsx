@@ -13,6 +13,7 @@ import {
   MessageCircle,
   MoreHorizontal,
   Settings2,
+  Tags,
   Users,
   X,
 } from "lucide-react";
@@ -31,6 +32,7 @@ const mobileNavItems = [
 ];
 
 const adminNavItems = [
+  { title: "Kategori", href: "/categories", icon: Tags },
   { title: "Variasi Global", href: "/variations", icon: Settings2 },
   { title: "Manajemen User", href: "/users", icon: Users },
   { title: "Telegram", href: "/telegram", icon: MessageCircle },

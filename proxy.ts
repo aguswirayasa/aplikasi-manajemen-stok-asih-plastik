@@ -24,10 +24,16 @@ export default withAuth(
           "/stock",
           "/products",
           "/telegram",
+          "/categories",
           "/variations",
           "/users",
         ];
-        const adminPrefixes = ["/telegram", "/variations", "/users"];
+        const adminPrefixes = [
+          "/telegram",
+          "/categories",
+          "/variations",
+          "/users",
+        ];
         const isProductAdminRoute =
           req.nextUrl.pathname === "/products/new" ||
           (req.nextUrl.pathname.startsWith("/products/") &&
@@ -62,6 +68,7 @@ export const config = {
     "/stock/:path*",
     "/products/:path*",
     "/telegram/:path*",
+    "/categories/:path*",
     "/variations/:path*",
     "/users/:path*",
     "/login",

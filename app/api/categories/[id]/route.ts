@@ -39,12 +39,34 @@ export const PUT = withErrorHandler(async (
     throw new ApiError("Nama kategori wajib diisi.", 400);
   }
 
-  const category = await prisma.category.update({
+  const trimmed = name.trim();
+  const categoryExists = await prisma.category.findUnique({
     where: { id },
-    data: { name: name.trim() },
   });
 
-  return apiResponse(category);
+  if (!categoryExists) {
+    throw new ApiError("Kategori tidak ditemukan.", 404);
+  }
+
+  const existing = await prisma.category.findFirst({
+    where: { name: trimmed, NOT: { id } },
+  });
+
+  if (existing) {
+    throw new ApiError(`Kategori "${trimmed}" sudah ada.`, 409);
+  }
+
+  const category = await prisma.category.update({
+    where: { id },
+    data: { name: trimmed },
+    include: {
+      _count: {
+        select: { products: true },
+      },
+    },
+  });
+
+  return apiResponse(category, 200, `Kategori diperbarui menjadi "${trimmed}".`);
 });
 
 export const DELETE = withErrorHandler(async (
@@ -75,5 +97,5 @@ export const DELETE = withErrorHandler(async (
     where: { id },
   });
 
-  return apiResponse({ success: true });
+  return apiResponse(null, 200, "Kategori berhasil dihapus.");
 });

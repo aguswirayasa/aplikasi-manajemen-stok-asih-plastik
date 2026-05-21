@@ -33,9 +33,24 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     throw new ApiError("Nama kategori wajib diisi.", 400);
   }
 
-  const category = await prisma.category.create({
-    data: { name: name.trim() },
+  const trimmed = name.trim();
+
+  const existing = await prisma.category.findUnique({
+    where: { name: trimmed },
   });
 
-  return apiResponse(category, 201);
+  if (existing) {
+    throw new ApiError(`Kategori "${trimmed}" sudah ada.`, 409);
+  }
+
+  const category = await prisma.category.create({
+    data: { name: trimmed },
+    include: {
+      _count: {
+        select: { products: true },
+      },
+    },
+  });
+
+  return apiResponse(category, 201, `Kategori "${trimmed}" berhasil dibuat.`);
 });
