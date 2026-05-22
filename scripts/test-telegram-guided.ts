@@ -70,6 +70,18 @@ assert.deepEqual(parseTelegramGuidedIntent("/masuk kertas a4 10 dari supplier"),
   explicit: true,
 });
 
+assert.deepEqual(
+  parseTelegramGuidedIntent("barang keluar plastik kecil 2 catatan retak"),
+  {
+    kind: "stock",
+    action: "stockOut",
+    query: "plastik kecil",
+    quantity: 2,
+    note: "retak",
+    explicit: true,
+  }
+);
+
 assert.deepEqual(parseTelegramGuidedIntent("masuk plastik hitam"), {
   kind: "stock",
   action: "stockIn",

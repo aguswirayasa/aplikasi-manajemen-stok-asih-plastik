@@ -48,6 +48,7 @@ const helpMessage = [
   "laporan",
   "",
   "Jika bot meminta pilihan, balas angka pilihan barang.",
+  "Jika bot meminta catatan, balas isi catatan atau balas - untuk melewati.",
   "Jika bot meminta konfirmasi, balas ya untuk menyimpan atau batal untuk berhenti.",
   "",
   "Untuk menyambungkan pertama kali, buat kode dari halaman Telegram di aplikasi stok, lalu kirim teks yang muncul ke chat ini.",
@@ -207,6 +208,8 @@ async function handlePendingConversation(
       return await handleStockChoice(text, state, context);
     case "awaitQuantity":
       return await handleQuantityReply(text, state, context);
+    case "awaitNote":
+      return await handleNoteReply(text, state, context);
     case "confirmStock":
       return await handleStockConfirmation(text, state, context);
     default:
@@ -307,8 +310,7 @@ async function handleStockIntent(
     return await askQuantity(context, intent.action, variant, intent.note);
   }
 
-  return await askStockConfirmation(context, {
-    kind: "confirmStock",
+  return await askNoteOrConfirmation(context, {
     action: intent.action,
     variant,
     quantity: intent.quantity,
@@ -346,8 +348,7 @@ async function handleStockChoice(
     return await askQuantity(context, state.action, variant, state.note);
   }
 
-  return await askStockConfirmation(context, {
-    kind: "confirmStock",
+  return await askNoteOrConfirmation(context, {
     action: state.action,
     variant,
     quantity: state.quantity,
@@ -366,12 +367,25 @@ async function handleQuantityReply(
     return "Jumlah harus angka lebih dari 0. Contoh: 2. Balas jumlah barang, atau ketik batal.";
   }
 
-  return await askStockConfirmation(context, {
-    kind: "confirmStock",
+  return await askNoteOrConfirmation(context, {
     action: state.action,
     variant: state.variant,
     quantity,
     note: state.note,
+  });
+}
+
+async function handleNoteReply(
+  text: string,
+  state: Extract<TelegramConversationPayload, { kind: "awaitNote" }>,
+  context: ActionReplyContext
+) {
+  return await askStockConfirmation(context, {
+    kind: "confirmStock",
+    action: state.action,
+    variant: state.variant,
+    quantity: state.quantity,
+    note: parseOptionalNoteReply(text),
   });
 }
 
@@ -422,6 +436,46 @@ async function askQuantity(
     `${formatActionLabel(action)} untuk barang ini:`,
     formatVariantLine(variant),
     "Balas jumlah barangnya. Contoh: 2. Ketik batal untuk membatalkan.",
+  ].join("\n");
+}
+
+async function askNoteOrConfirmation(
+  context: ActionReplyContext,
+  payload: {
+    action: TelegramStockAction;
+    variant: TelegramVariantSnapshot;
+    quantity: number;
+    note: string | null;
+  }
+) {
+  if (payload.note) {
+    return await askStockConfirmation(context, {
+      kind: "confirmStock",
+      ...payload,
+    });
+  }
+
+  return await askNote(context, payload);
+}
+
+async function askNote(
+  context: ActionReplyContext,
+  payload: {
+    action: TelegramStockAction;
+    variant: TelegramVariantSnapshot;
+    quantity: number;
+  }
+) {
+  await saveTelegramConversationState(context.chatId, context.user.id, {
+    kind: "awaitNote",
+    ...payload,
+  });
+
+  return [
+    "Tambahkan catatan jika perlu.",
+    "Contoh: dari supplier.",
+    "Jika tidak ada, balas - atau lewati.",
+    "Ketik batal untuk membatalkan.",
   ].join("\n");
 }
 
@@ -503,6 +557,21 @@ function formatStockUsage(action: TelegramStockAction) {
 
 function formatActionLabel(action: TelegramStockAction) {
   return action === "stockIn" ? "Barang masuk" : "Barang keluar";
+}
+
+function parseOptionalNoteReply(text: string) {
+  const normalized = text.trim().replace(/\s+/g, " ").toLowerCase();
+
+  if (
+    normalized === "-" ||
+    normalized === "lewati" ||
+    normalized === "skip" ||
+    normalized === "tanpa catatan"
+  ) {
+    return null;
+  }
+
+  return text.trim() || null;
 }
 
 function buildTelegramNote(note: string | null) {

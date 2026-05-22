@@ -38,6 +38,12 @@ export type TelegramConversationPayload =
       note: string | null;
     }
   | {
+      kind: "awaitNote";
+      action: TelegramStockAction;
+      variant: TelegramVariantSnapshot;
+      quantity: number;
+    }
+  | {
       kind: "confirmStock";
       action: TelegramStockAction;
       variant: TelegramVariantSnapshot;
@@ -167,6 +173,22 @@ function parseConversationPayload(
       variant: data.variant,
       quantity: data.quantity,
       note: data.note,
+    };
+  }
+
+  if (
+    kind === "awaitNote" &&
+    hasStockAction(data) &&
+    hasVariant(data.variant) &&
+    typeof data.quantity === "number" &&
+    data.quantity > 0 &&
+    Number.isInteger(data.quantity)
+  ) {
+    return {
+      kind,
+      action: data.action,
+      variant: data.variant,
+      quantity: data.quantity,
     };
   }
 
