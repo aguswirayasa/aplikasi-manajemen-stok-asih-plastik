@@ -10,6 +10,7 @@ import {
   ArrowDownToLine,
   ArrowUpFromLine,
   History,
+  LogOut,
   MessageCircle,
   MoreHorizontal,
   Settings2,
@@ -17,7 +18,7 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { useSession } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import {
   InstallAppAction,
   useInstallAppPrompt,
@@ -60,7 +61,7 @@ export function BottomNav() {
   if (!session?.user) return null;
 
   const isAdmin = session.user.role === "ADMIN";
-  const showMoreMenu = isAdmin || canInstall;
+  const showMoreMenu = true;
   const isMoreActive = adminNavItems.some(
     (item) => pathname === item.href || pathname.startsWith(item.href + "/")
   );
@@ -68,6 +69,11 @@ export function BottomNav() {
   const handleInstallApp = async () => {
     await installApp();
     setIsMoreOpen(false);
+  };
+
+  const handleLogout = () => {
+    setIsMoreOpen(false);
+    signOut({ callbackUrl: "/login" });
   };
 
   return (
@@ -134,6 +140,14 @@ export function BottomNav() {
                   );
                 })}
               {canInstall && <InstallAppAction onClick={handleInstallApp} />}
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="flex w-full items-center gap-3 rounded px-3 py-3 text-sm font-medium text-[#939084] transition-colors hover:bg-[#eceae3] hover:text-red-600"
+              >
+                <LogOut className="h-5 w-5 flex-shrink-0" />
+                <span>Keluar</span>
+              </button>
             </div>
           </div>
         </div>
