@@ -1,12 +1,15 @@
 import prisma from "@/lib/prisma";
-import { buildSalesPeriodFilter } from "@/lib/sales";
-import { getSalesReport } from "@/lib/sales";
+import {
+  buildSalesPeriodFilter,
+  getSalesReport,
+  REPORT_TIMEZONE,
+} from "@/lib/sales";
 import {
   mergeStockTransactions,
   stockInTransactionInclude,
   stockOutTransactionInclude,
 } from "@/lib/stock-transactions";
-import { format } from "date-fns";
+import { formatInTimeZone } from "date-fns-tz";
 
 export async function getDashboardData({
   includeOwnerTotals = true,
@@ -15,8 +18,8 @@ export async function getDashboardData({
   includeOwnerTotals?: boolean;
   lowStockLimit?: number;
 } = {}) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const todayStr = formatInTimeZone(new Date(), REPORT_TIMEZONE, "yyyy-MM-dd");
+  const todayPeriod = buildSalesPeriodFilter(todayStr, todayStr);
 
   const [
     totalProducts,
@@ -66,11 +69,11 @@ export async function getDashboardData({
       take: lowStockLimit,
     }),
     prisma.stockIn.aggregate({
-      where: { createdAt: { gte: today } },
+      where: { createdAt: { gte: todayPeriod.from, lte: todayPeriod.to } },
       _sum: { quantity: true },
     }),
     prisma.stockOut.aggregate({
-      where: { createdAt: { gte: today } },
+      where: { createdAt: { gte: todayPeriod.from, lte: todayPeriod.to } },
       _sum: { quantity: true },
     }),
     prisma.stockIn.findMany({
@@ -87,10 +90,9 @@ export async function getDashboardData({
 
   const recentTransactions = mergeStockTransactions(stockIns, stockOuts, 5);
 
-  // Bangun periode hari ini untuk laporan penjualan
-  const todayStr = format(new Date(), "yyyy-MM-dd");
+  // Dashboard memakai hari bisnis Asia/Singapore agar hasil produksi tidak bergantung timezone server.
   const salesReport = includeOwnerTotals
-    ? await getSalesReport(buildSalesPeriodFilter(todayStr, todayStr), 5)
+    ? await getSalesReport(todayPeriod, 5)
     : null;
 
   return {

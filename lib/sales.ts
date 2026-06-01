@@ -4,7 +4,7 @@ import type { Prisma } from "@/generated/prisma/client";
 import { ApiError } from "@/lib/api-helpers";
 import prisma from "@/lib/prisma";
 
-const REPORT_TIMEZONE = "Asia/Singapore";
+export const REPORT_TIMEZONE = "Asia/Singapore";
 const MAX_SALE_ITEMS = 100;
 const MAX_LATEST_SALES = 10;
 
