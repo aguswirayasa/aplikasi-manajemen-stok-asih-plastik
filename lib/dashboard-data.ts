@@ -1,8 +1,12 @@
 import prisma from "@/lib/prisma";
+import { buildSalesPeriodFilter } from "@/lib/sales";
+import { getSalesReport } from "@/lib/sales";
 import {
   mergeStockTransactions,
-  stockTransactionInclude,
+  stockInTransactionInclude,
+  stockOutTransactionInclude,
 } from "@/lib/stock-transactions";
+import { format } from "date-fns";
 
 export async function getDashboardData({
   includeOwnerTotals = true,
@@ -72,16 +76,22 @@ export async function getDashboardData({
     prisma.stockIn.findMany({
       take: 5,
       orderBy: { createdAt: "desc" },
-      include: stockTransactionInclude,
+      include: stockInTransactionInclude,
     }),
     prisma.stockOut.findMany({
       take: 5,
       orderBy: { createdAt: "desc" },
-      include: stockTransactionInclude,
+      include: stockOutTransactionInclude,
     }),
   ]);
 
   const recentTransactions = mergeStockTransactions(stockIns, stockOuts, 5);
+
+  // Bangun periode hari ini untuk laporan penjualan
+  const todayStr = format(new Date(), "yyyy-MM-dd");
+  const salesReport = includeOwnerTotals
+    ? await getSalesReport(buildSalesPeriodFilter(todayStr, todayStr), 5)
+    : null;
 
   return {
     totals: includeOwnerTotals
@@ -98,5 +108,6 @@ export async function getDashboardData({
     },
     lowStockVariants,
     recentTransactions,
+    salesReport,
   };
 }

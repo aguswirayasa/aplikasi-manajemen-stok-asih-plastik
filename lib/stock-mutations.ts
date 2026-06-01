@@ -53,6 +53,9 @@ export async function recordStockIn(
     );
   }
 
+  // Satu kali pencatatan barang masuk dikelompokkan dengan batchId yang sama
+  const batchId = crypto.randomUUID();
+
   return prisma.$transaction(async (tx) => {
     const createdIds: string[] = [];
 
@@ -75,6 +78,7 @@ export async function recordStockIn(
           variantId: item.variantId,
           quantity: item.quantity,
           note,
+          batchId,
           userId,
         },
       });
@@ -95,6 +99,9 @@ export async function recordStockOut(
   items: StockItemInput[],
   note: string | null
 ): Promise<StockOutMutation[]> {
+  // Satu kali pencatatan barang keluar manual dikelompokkan dengan batchId yang sama
+  const batchId = crypto.randomUUID();
+
   return prisma.$transaction(async (tx) => {
     const createdIds: string[] = [];
 
@@ -149,6 +156,7 @@ export async function recordStockOut(
           variantId: item.variantId,
           quantity: item.quantity,
           note,
+          batchId,
           userId,
         },
       });

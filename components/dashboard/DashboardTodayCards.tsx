@@ -33,8 +33,8 @@ function TodayCard({
   return (
     <article className="flex items-center justify-between gap-4 rounded-[8px] border border-[#c5c0b1] bg-[#eceae3]/35 p-4">
       <div>
-        <p className="text-[13px] font-semibold text-[#36342e]">{label}</p>
-        <p className="mt-1 text-[28px] font-bold leading-none text-[#201515]">
+        <p className="text-[11px] font-semibold text-[#36342e]">{label}</p>
+        <p className="mt-1 text-[18px] font-bold leading-none text-[#201515]">
           {value}
         </p>
       </div>

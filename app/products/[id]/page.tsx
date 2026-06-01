@@ -9,7 +9,8 @@ import { getProductSummary } from "@/lib/product-summary";
 import prisma from "@/lib/prisma";
 import {
   mergeStockTransactions,
-  stockTransactionInclude,
+  stockInTransactionInclude,
+  stockOutTransactionInclude,
 } from "@/lib/stock-transactions";
 
 export const dynamic = "force-dynamic";
@@ -52,13 +53,13 @@ export default async function ProductDetailPage({
       where: { variant: { productId: id } },
       take: 8,
       orderBy: { createdAt: "desc" },
-      include: stockTransactionInclude,
+      include: stockInTransactionInclude,
     }),
     prisma.stockOut.findMany({
       where: { variant: { productId: id } },
       take: 8,
       orderBy: { createdAt: "desc" },
-      include: stockTransactionInclude,
+      include: stockOutTransactionInclude,
     }),
   ]);
   const recentMovements = mergeStockTransactions(stockIns, stockOuts, 8);

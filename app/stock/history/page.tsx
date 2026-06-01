@@ -1,30 +1,21 @@
 import { StockHistoryView } from "@/components/stock/StockHistoryView";
 import { requirePageAuth } from "@/lib/page-auth";
-import prisma from "@/lib/prisma";
 import {
-  mergeStockTransactions,
-  stockTransactionInclude,
-} from "@/lib/stock-transactions";
+  getStockHistory,
+  parseStockHistoryFilter,
+} from "@/lib/stock-history";
 
 export const dynamic = "force-dynamic";
 
-export default async function StockHistoryPage() {
+export default async function StockHistoryPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   await requirePageAuth();
 
-  const [stockIns, stockOuts] = await Promise.all([
-    prisma.stockIn.findMany({
-      take: 100,
-      orderBy: { createdAt: "desc" },
-      include: stockTransactionInclude,
-    }),
-    prisma.stockOut.findMany({
-      take: 100,
-      orderBy: { createdAt: "desc" },
-      include: stockTransactionInclude,
-    }),
-  ]);
+  const filter = parseStockHistoryFilter(await searchParams);
+  const result = await getStockHistory(filter);
 
-  const history = mergeStockTransactions(stockIns, stockOuts, 100);
-
-  return <StockHistoryView history={history} />;
+  return <StockHistoryView result={result} />;
 }

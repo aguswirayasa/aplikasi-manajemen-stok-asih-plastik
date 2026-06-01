@@ -5,19 +5,29 @@ import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   AlertTriangle,
-  Check,
   CheckSquare,
   ChevronRight,
+  Check,
   PencilLine,
   SlidersHorizontal,
   Square,
 } from "lucide-react";
 import { toast } from "sonner";
 import { CategoryQuickAdd } from "@/components/categories/CategoryQuickAdd";
+import {
+  getNextStep,
+  getPrevStep,
+  STEPS_DENGAN_VARIASI,
+  STEPS_TANPA_VARIASI,
+  VariationTypeFallback,
+  VariationTypeQuickAdd,
+  VariationValueQuickAdd,
+  WizardStepIndicator,
+  type VariationMode,
+  type VariationType,
+  type VariationValue,
+} from "@/components/products/ProductWizardControls";
 import type { Category } from "@/types/categories";
-
-type VariationValue = { id: string; value: string };
-type VariationType = { id: string; name: string; values: VariationValue[] };
 
 type GeneratedCombination = {
   key: string;
@@ -50,11 +60,13 @@ const EMPTY_VARIANT_DRAFT: VariantDraft = {
   minStock: "0",
 };
 
+
 const EMPTY_BULK_VARIANT_DRAFT: VariantDraft = {
   price: "",
   stock: "",
   minStock: "",
 };
+
 
 export function ProductWizard({
   categories,
@@ -72,6 +84,12 @@ export function ProductWizard({
   const [description, setDescription] = useState("");
   const [categoryOptions, setCategoryOptions] = useState(categories);
 
+  // Mode variasi: "dengan" = produk dengan variasi, "tanpa" = produk tanpa variasi
+  const [variationMode, setVariationMode] = useState<VariationMode>("dengan");
+  const [variationTypeOptions, setVariationTypeOptions] =
+    useState<VariationType[]>(variationTypes);
+  const [typeQuickAddOpen, setTypeQuickAddOpen] = useState(false);
+
   const [selectedVariations, setSelectedVariations] = useState<
     Record<string, string[]>
   >({});
@@ -81,23 +99,27 @@ export function ProductWizard({
   const [variantDrafts, setVariantDrafts] = useState<
     Record<string, VariantDraft>
   >({});
+  const [singleVariantDraft, setSingleVariantDraft] =
+    useState<VariantDraft>(EMPTY_VARIANT_DRAFT);
   const [bulkEditorOpen, setBulkEditorOpen] = useState(false);
   const [bulkFilters, setBulkFilters] = useState<Record<string, string>>({});
   const [bulkDraft, setBulkDraft] = useState<VariantDraft>(
     EMPTY_BULK_VARIANT_DRAFT,
   );
 
+  // valueMap dibangun dari variationTypeOptions agar mencakup tipe/nilai yang baru ditambahkan
   const valueMap = useMemo(() => {
     const map = new Map<string, string>();
-    variationTypes.forEach((type) =>
+    variationTypeOptions.forEach((type) =>
       type.values.forEach((value) => map.set(value.id, value.value)),
     );
     return map;
-  }, [variationTypes]);
+  }, [variationTypeOptions]);
 
+  // combinations bergantung pada variationTypeOptions agar kombinasi selalu sinkron dengan opsi terkini
   const combinations = useMemo(
-    () => buildCombinations(variationTypes, selectedVariations),
-    [variationTypes, selectedVariations],
+    () => buildCombinations(variationTypeOptions, selectedVariations),
+    [variationTypeOptions, selectedVariations],
   );
   const combinationKeySet = useMemo(
     () => new Set(combinations.map((combination) => combination.key)),
@@ -110,13 +132,14 @@ export function ProductWizard({
       ),
     [combinations, selectedCombinationKeys],
   );
+  // activeVariationTypes bergantung pada variationTypeOptions agar mencakup tipe yang baru ditambahkan
   const activeVariationTypes = useMemo(
     () =>
-      variationTypes.filter(
+      variationTypeOptions.filter(
         (variationType) =>
           (selectedVariations[variationType.id]?.length ?? 0) > 0,
       ),
-    [selectedVariations, variationTypes],
+    [selectedVariations, variationTypeOptions],
   );
   const matchedBulkCombinations = useMemo(
     () =>
@@ -143,6 +166,8 @@ export function ProductWizard({
     }
 
     if (step === 2) {
+      // Mode tanpa variasi: selalu bisa lanjut dari step 2
+      if (variationMode === "tanpa") return true;
       return getActiveVariationTypeIds().length > 0 && combinations.length > 0;
     }
 
@@ -154,37 +179,60 @@ export function ProductWizard({
   };
 
   const handleSave = async () => {
-    const validationMessage = validateVariantDrafts(
-      selectedCombinations,
-      variantDrafts,
-    );
+    // Mode Dengan Variasi: validasi draft setiap kombinasi SKU sebelum menyimpan
+    if (variationMode === "dengan") {
+      const validationMessage = validateVariantDrafts(
+        selectedCombinations,
+        variantDrafts,
+      );
 
-    if (validationMessage) {
-      toast.error(validationMessage);
-      return;
+      if (validationMessage) {
+        toast.error(validationMessage);
+        return;
+      }
     }
 
     setLoading(true);
     try {
+      // Bangun payload berbeda berdasarkan mode variasi
+      const body =
+        variationMode === "tanpa"
+          ? {
+              // Mode Tanpa Variasi: satu varian tunggal tanpa dimensi variasi
+              name,
+              categoryId,
+              description,
+              variants: [
+                {
+                  valueIds: [],
+                  price: Number(singleVariantDraft.price),
+                  stock: Number.parseInt(singleVariantDraft.stock, 10),
+                  minStock: Number.parseInt(singleVariantDraft.minStock, 10),
+                },
+              ],
+            }
+          : {
+              // Mode Dengan Variasi: payload tidak berubah dari implementasi sebelumnya
+              name,
+              categoryId,
+              description,
+              variationTypeIds: getActiveVariationTypeIds(),
+              variants: selectedCombinations.map((combination) => {
+                const draft = getVariantDraft(variantDrafts, combination.key);
+
+                return {
+                  valueIds: combination.valueIds,
+                  price: Number(draft.price),
+                  stock: Number.parseInt(draft.stock, 10),
+                  minStock: Number.parseInt(draft.minStock, 10),
+                };
+              }),
+            };
+
       const response = await fetch("/api/products", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name,
-          categoryId,
-          description,
-          variationTypeIds: getActiveVariationTypeIds(),
-          variants: selectedCombinations.map((combination) => {
-            const draft = getVariantDraft(variantDrafts, combination.key);
-
-            return {
-              valueIds: combination.valueIds,
-              price: Number(draft.price),
-              stock: Number.parseInt(draft.stock, 10),
-              minStock: Number.parseInt(draft.minStock, 10),
-            };
-          }),
-        }),
+        body: JSON.stringify(body),
       });
       const json = await response.json();
 
@@ -205,6 +253,10 @@ export function ProductWizard({
   };
 
   const toggleVariationType = (typeId: string) => {
+    // Memilih tipe variasi apapun secara otomatis beralih ke mode "dengan"
+    if (variationMode === "tanpa") {
+      setVariationMode("dengan");
+    }
     setSelectedVariations((current) => {
       const next = { ...current };
 
@@ -262,6 +314,67 @@ export function ProductWizard({
     setCategoryId(category.id);
   };
 
+  // Menambah tipe variasi baru ke daftar opsi dan auto-check tipe tersebut
+  const handleVariationTypeCreated = (newType: VariationType) => {
+    // Normalisasi values ke array kosong jika API tidak menyertakannya (tipe baru belum punya nilai)
+    const normalized: VariationType = {
+      ...newType,
+      values: newType.values ?? [],
+    };
+
+    setVariationMode("dengan");
+    // Tambah ke daftar opsi, diurutkan alfabetis berdasarkan nama
+    setVariationTypeOptions((current) =>
+      [...current, normalized].sort((a, b) => a.name.localeCompare(b.name)),
+    );
+    // Auto-check tipe baru agar langsung aktif di Step 2
+    setSelectedVariations((current) => ({
+      ...current,
+      [newType.id]: [],
+    }));
+  };
+
+  // Menambah nilai variasi baru ke tipe yang sesuai dan auto-check nilai tersebut
+  const handleVariationValueCreated = (
+    typeId: string,
+    newValue: VariationValue,
+  ) => {
+    setVariationMode("dengan");
+    // Tambah nilai ke tipe yang sesuai dalam variationTypeOptions, diurutkan alfabetis
+    setVariationTypeOptions((current) =>
+      current.map((type) =>
+        type.id === typeId
+          ? {
+              ...type,
+              values: [...type.values, newValue].sort((a, b) =>
+                a.value.localeCompare(b.value),
+              ),
+            }
+          : type,
+      ),
+    );
+    // Auto-check nilai baru agar langsung terpilih di Step 2
+    setSelectedVariations((current) => ({
+      ...current,
+      [typeId]: [...(current[typeId] ?? []), newValue.id],
+    }));
+  };
+
+  // Mengganti mode variasi dan mereset state variasi yang relevan
+  const handleVariationModeChange = (mode: VariationMode) => {
+    setVariationMode(mode);
+    if (mode === "dengan") {
+      // Reset state variasi agar user mulai dari awal saat kembali ke mode dengan variasi
+      setSelectedVariations({});
+      setSelectedCombinationKeys([]);
+      setVariantDrafts({});
+    } else {
+      // Hapus semua pilihan tipe variasi saat beralih ke mode tanpa variasi
+      setSelectedVariations({});
+      setSelectedCombinationKeys([]);
+    }
+  };
+
   const updateVariantDraft = (
     combinationKey: string,
     field: keyof VariantDraft,
@@ -301,6 +414,37 @@ export function ProductWizard({
           ...draft,
           [field]: parsed.toString(),
         },
+      };
+    });
+  };
+
+  // Memperbarui satu field pada singleVariantDraft untuk mode Tanpa Variasi
+  const updateSingleVariantDraft = (field: keyof VariantDraft, value: string) => {
+    setSingleVariantDraft((current) => ({
+      ...current,
+      [field]: value,
+    }));
+  };
+
+  // Normalisasi angka pada singleVariantDraft saat field kehilangan fokus
+  const normalizeSingleVariantNumber = (field: keyof VariantDraft) => {
+    setSingleVariantDraft((current) => {
+      const value = current[field].trim();
+
+      if (value.length === 0) {
+        return current;
+      }
+
+      const parsed =
+        field === "price" ? Number(value) : Number.parseInt(value, 10);
+
+      if (!Number.isFinite(parsed) || parsed < 0) {
+        return current;
+      }
+
+      return {
+        ...current,
+        [field]: parsed.toString(),
       };
     });
   };
@@ -380,30 +524,21 @@ export function ProductWizard({
     );
   };
 
+  // Menggunakan variationTypeOptions agar tipe yang baru ditambahkan ikut terhitung
   function getActiveVariationTypeIds() {
-    return variationTypes
+    return variationTypeOptions
       .map((variationType) => variationType.id)
       .filter((typeId) => (selectedVariations[typeId]?.length ?? 0) > 0);
   }
 
+  // Tentukan daftar step aktif dan index step saat ini berdasarkan mode variasi
+  const activeSteps =
+    variationMode === "dengan" ? STEPS_DENGAN_VARIASI : STEPS_TANPA_VARIASI;
+  const currentStepIndex = activeSteps.findIndex((s) => s.number === step);
+
   return (
     <div className="overflow-hidden rounded-[8px] border border-[#c5c0b1] bg-[#fffefb]">
-      <div className="grid grid-cols-5 border-b border-[#c5c0b1] bg-[#eceae3]/50">
-        {[1, 2, 3, 4, 5].map((stepNumber) => (
-          <div
-            key={stepNumber}
-            className={`border-b-[4px] px-2 py-3 text-center text-[10px] font-medium uppercase md:text-[14px] ${
-              step === stepNumber
-                ? "border-[#ff4f00] bg-[#fffefb] text-[#201515]"
-                : step > stepNumber
-                  ? "border-[#c5c0b1] bg-[#fffefb] text-[#939084]"
-                  : "border-transparent text-[#939084]"
-            }`}
-          >
-            Langkah {stepNumber}
-          </div>
-        ))}
-      </div>
+      <WizardStepIndicator steps={activeSteps} currentIndex={currentStepIndex} />
 
       <div className="p-4 md:p-8">
         {step === 1 && (
@@ -451,44 +586,68 @@ export function ProductWizard({
 
         {step === 2 && (
           <div className="mx-auto max-w-[680px] space-y-6">
+            {/* Header Step 2 */}
             <div>
               <h2 className="text-[22px] font-semibold text-[#201515] text-balance">
                 Pilih Tipe Variasi
               </h2>
               <p className="mt-1 text-[15px] text-[#939084] text-pretty">
-                Pilih variasi yang berlaku untuk produk ini, lalu pilih
-                nilainya.
+                Pilih tipe variasi yang berlaku untuk produk ini, atau pilih
+                Tanpa Variasi jika produk tidak memiliki variasi.
               </p>
             </div>
 
             <div className="space-y-4">
-              {variationTypes.map((type) => (
-                <div
-                  key={type.id}
-                  className="overflow-hidden rounded-[5px] border border-[#c5c0b1]"
+              <div className="overflow-hidden rounded-[5px] border border-[#c5c0b1]">
+                <button
+                  type="button"
+                  className={`flex min-h-14 w-full items-center gap-3 p-3 text-left ${
+                    variationMode === "tanpa" ? "bg-[#eceae3]" : "bg-[#fffefb]"
+                  }`}
+                  onClick={() => handleVariationModeChange("tanpa")}
                 >
-                  <button
-                    type="button"
-                    className={`flex min-h-14 w-full items-center gap-3 p-3 text-left ${
-                      selectedVariations[type.id]
-                        ? "bg-[#eceae3]"
-                        : "bg-[#fffefb]"
-                    }`}
-                    onClick={() => toggleVariationType(type.id)}
-                  >
-                    {selectedVariations[type.id] ? (
-                      <CheckSquare className="size-5 shrink-0 text-[#ff4f00]" />
-                    ) : (
-                      <Square className="size-5 shrink-0 text-[#939084]" />
-                    )}
-                    <span className="font-semibold text-[#201515]">
-                      {type.name}
-                    </span>
-                  </button>
+                  {variationMode === "tanpa" ? (
+                    <CheckSquare className="size-5 shrink-0 text-[#ff4f00]" />
+                  ) : (
+                    <Square className="size-5 shrink-0 text-[#939084]" />
+                  )}
+                  <span className="font-semibold text-[#201515]">
+                    Tanpa Variasi
+                  </span>
+                </button>
+              </div>
 
-                  {selectedVariations[type.id] && (
-                    <div className="border-t border-[#c5c0b1] bg-[#fffefb] p-4">
-                      {type.values.length > 0 ? (
+              {variationTypeOptions.length === 0 ? (
+                <VariationTypeFallback
+                  onAddClick={() => setTypeQuickAddOpen(true)}
+                />
+              ) : (
+                variationTypeOptions.map((type) => (
+                  <div
+                    key={type.id}
+                    className="overflow-hidden rounded-[5px] border border-[#c5c0b1]"
+                  >
+                    <button
+                      type="button"
+                      className={`flex min-h-14 w-full items-center gap-3 p-3 text-left ${
+                        selectedVariations[type.id] !== undefined
+                          ? "bg-[#eceae3]"
+                          : "bg-[#fffefb]"
+                      }`}
+                      onClick={() => toggleVariationType(type.id)}
+                    >
+                      {selectedVariations[type.id] !== undefined ? (
+                        <CheckSquare className="size-5 shrink-0 text-[#ff4f00]" />
+                      ) : (
+                        <Square className="size-5 shrink-0 text-[#939084]" />
+                      )}
+                      <span className="font-semibold text-[#201515]">
+                        {type.name}
+                      </span>
+                    </button>
+
+                    {selectedVariations[type.id] !== undefined && (
+                      <div className="border-t border-[#c5c0b1] bg-[#fffefb] p-4">
                         <div className="flex flex-wrap gap-2">
                           {type.values.map((value) => {
                             const isSelected = selectedVariations[
@@ -512,17 +671,27 @@ export function ProductWizard({
                               </button>
                             );
                           })}
+                          {/* Inline form tambah nilai variasi baru untuk tipe ini */}
+                          <VariationValueQuickAdd
+                            typeId={type.id}
+                            onCreated={(v) =>
+                              handleVariationValueCreated(type.id, v)
+                            }
+                          />
                         </div>
-                      ) : (
-                        <p className="text-[14px] text-[#939084]">
-                          Belum ada nilai variasi untuk tipe ini.
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ))}
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
             </div>
+
+            {/* VariationTypeQuickAdd selalu tampil di bawah daftar */}
+            <VariationTypeQuickAdd
+              onCreated={handleVariationTypeCreated}
+              open={typeQuickAddOpen}
+              onOpenChange={setTypeQuickAddOpen}
+            />
           </div>
         )}
 
@@ -611,7 +780,47 @@ export function ProductWizard({
           </div>
         )}
 
-        {step === 4 && (
+        {step === 4 && variationMode === "tanpa" && (
+          <div className="mx-auto max-w-[600px] space-y-6">
+            <div>
+              <h2 className="text-[22px] font-semibold text-[#201515] text-balance">
+                Atur Harga dan Stok
+              </h2>
+              <p className="mt-1 text-[15px] text-[#939084] text-pretty">
+                Boleh diisi 0 jika harga atau stok belum diketahui.
+              </p>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <Field label="Harga">
+                <NumericInput
+                  ariaLabel="Harga produk"
+                  value={singleVariantDraft.price}
+                  inputMode="decimal"
+                  onChange={(value) => updateSingleVariantDraft("price", value)}
+                  onBlur={() => normalizeSingleVariantNumber("price")}
+                />
+              </Field>
+              <Field label="Stok Awal">
+                <NumericInput
+                  ariaLabel="Stok awal produk"
+                  value={singleVariantDraft.stock}
+                  onChange={(value) => updateSingleVariantDraft("stock", value)}
+                  onBlur={() => normalizeSingleVariantNumber("stock")}
+                />
+              </Field>
+              <Field label="Min. Stok">
+                <NumericInput
+                  ariaLabel="Minimal stok produk"
+                  value={singleVariantDraft.minStock}
+                  onChange={(value) => updateSingleVariantDraft("minStock", value)}
+                  onBlur={() => normalizeSingleVariantNumber("minStock")}
+                />
+              </Field>
+            </div>
+          </div>
+        )}
+
+        {step === 4 && variationMode === "dengan" && (
           <div className="space-y-5">
             <div>
               <h2 className="text-[22px] font-semibold text-[#201515] text-balance">
@@ -726,6 +935,8 @@ export function ProductWizard({
             activeVariationTypes={activeVariationTypes}
             reviewSummary={reviewSummary}
             valueMap={valueMap}
+            variationMode={variationMode}
+            singleVariantDraft={singleVariantDraft}
             onEditStock={() => setStep(4)}
           />
         )}
@@ -734,7 +945,7 @@ export function ProductWizard({
       <div className="sticky bottom-0 z-20 flex items-center justify-between gap-3 border-t border-[#c5c0b1] bg-[#fffefb] p-4 shadow-sm md:static md:px-8 md:shadow-none">
         <button
           type="button"
-          onClick={() => setStep(step - 1)}
+          onClick={() => setStep(getPrevStep(step, variationMode))}
           disabled={step === 1 || loading}
           className="flex min-h-11 items-center gap-2 rounded-[4px] border border-[#c5c0b1] px-4 text-[14px] font-semibold text-[#201515] transition-colors hover:bg-[#eceae3] disabled:opacity-50"
         >
@@ -744,7 +955,7 @@ export function ProductWizard({
         {step < 5 ? (
           <button
             type="button"
-            onClick={() => setStep(step + 1)}
+            onClick={() => setStep(getNextStep(step, variationMode))}
             disabled={!canGoNext()}
             className="flex min-h-11 items-center gap-2 rounded-[4px] bg-[#ff4f00] px-5 text-[14px] font-semibold text-[#fffefb] transition-opacity hover:opacity-90 disabled:opacity-50"
           >
@@ -960,6 +1171,8 @@ function ProductReviewStep({
   activeVariationTypes,
   reviewSummary,
   valueMap,
+  variationMode,
+  singleVariantDraft,
   onEditStock,
 }: {
   name: string;
@@ -968,12 +1181,19 @@ function ProductReviewStep({
   activeVariationTypes: VariationType[];
   reviewSummary: ReviewSummary;
   valueMap: Map<string, string>;
+  variationMode: VariationMode;
+  singleVariantDraft?: VariantDraft;
   onEditStock: () => void;
 }) {
   const hasWarnings =
-    reviewSummary.allSkuValuesAreZero ||
-    reviewSummary.allZeroCount > 0 ||
-    reviewSummary.stockWithoutPriceCount > 0;
+    variationMode === "tanpa"
+      ? singleVariantDraft !== undefined &&
+        Number(singleVariantDraft.price) === 0 &&
+        Number(singleVariantDraft.stock) === 0 &&
+        Number(singleVariantDraft.minStock) === 0
+      : reviewSummary.allSkuValuesAreZero ||
+        reviewSummary.allZeroCount > 0 ||
+        reviewSummary.stockWithoutPriceCount > 0;
 
   return (
     <div className="space-y-5">
@@ -1006,14 +1226,18 @@ function ProductReviewStep({
           <ReviewInfo
             label="Variasi"
             value={
-              activeVariationTypes.length > 0
-                ? activeVariationTypes.map((type) => type.name).join(", ")
-                : "-"
+              // Mode "tanpa": tampilkan label tetap; mode "dengan": daftar tipe aktif
+              variationMode === "tanpa"
+                ? "Tanpa Variasi"
+                : activeVariationTypes.length > 0
+                  ? activeVariationTypes.map((type) => type.name).join(", ")
+                  : "-"
             }
           />
           <ReviewInfo
             label="Jumlah SKU"
-            value={`${reviewSummary.skuList.length} SKU`}
+            // Mode "tanpa": selalu 1 SKU; mode "dengan": jumlah dari reviewSummary
+            value={variationMode === "tanpa" ? "1 SKU" : `${reviewSummary.skuList.length} SKU`}
           />
         </div>
         <div className="mt-3">
@@ -1033,23 +1257,32 @@ function ProductReviewStep({
                 Ada data SKU yang perlu dicek
               </h3>
               <div className="mt-2 space-y-1 text-[14px] text-[#6f4e1f]">
-                {reviewSummary.allSkuValuesAreZero && (
+                {variationMode === "tanpa" ? (
+                  // Peringatan khusus mode tanpa variasi: semua nilai masih 0
                   <p>
-                    Semua SKU masih berisi harga, stok awal, dan min. stok 0.
+                    Harga, stok awal, dan min. stok masih bernilai 0.
                   </p>
-                )}
-                {reviewSummary.allZeroCount > 0 &&
-                  !reviewSummary.allSkuValuesAreZero && (
-                    <p>
-                      {reviewSummary.allZeroCount} SKU masih berisi semua nilai
-                      0.
-                    </p>
-                  )}
-                {reviewSummary.stockWithoutPriceCount > 0 && (
-                  <p>
-                    {reviewSummary.stockWithoutPriceCount} SKU punya stok awal
-                    tetapi harga masih 0.
-                  </p>
+                ) : (
+                  <>
+                    {reviewSummary.allSkuValuesAreZero && (
+                      <p>
+                        Semua SKU masih berisi harga, stok awal, dan min. stok 0.
+                      </p>
+                    )}
+                    {reviewSummary.allZeroCount > 0 &&
+                      !reviewSummary.allSkuValuesAreZero && (
+                        <p>
+                          {reviewSummary.allZeroCount} SKU masih berisi semua nilai
+                          0.
+                        </p>
+                      )}
+                    {reviewSummary.stockWithoutPriceCount > 0 && (
+                      <p>
+                        {reviewSummary.stockWithoutPriceCount} SKU punya stok awal
+                        tetapi harga masih 0.
+                      </p>
+                    )}
+                  </>
                 )}
               </div>
             </div>
@@ -1063,51 +1296,73 @@ function ProductReviewStep({
             Ringkasan SKU
           </h3>
           <span className="text-[13px] font-semibold text-[#939084]">
-            {reviewSummary.skuList.length} SKU
+            {variationMode === "tanpa" ? "1 SKU" : `${reviewSummary.skuList.length} SKU`}
           </span>
         </div>
 
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-          {reviewSummary.skuList.map((item) => {
-            const needsReview = item.isAllZero || item.hasStockWithoutPrice;
-
-            return (
-              <article
-                key={item.combination.key}
-                className={`rounded-[5px] border bg-[#fffefb] p-4 ${
-                  needsReview ? "border-[#d97706]" : "border-[#c5c0b1]"
-                }`}
-              >
-                <div className="flex flex-wrap gap-1.5">
-                  {item.combination.valueIds.map((valueId) => (
-                    <span
-                      key={valueId}
-                      className="rounded-[3px] bg-[#ff4f00]/10 px-2 py-0.5 text-[12px] font-bold uppercase text-[#ff4f00]"
-                    >
-                      {valueMap.get(valueId)}
-                    </span>
-                  ))}
+          {variationMode === "tanpa" ? (
+            // Mode tanpa variasi: satu kartu SKU tunggal tanpa chip nilai variasi
+            <article
+              className={`rounded-[5px] border bg-[#fffefb] p-4 ${
+                hasWarnings ? "border-[#d97706]" : "border-[#c5c0b1]"
+              }`}
+            >
+              {hasWarnings && (
+                <div className="mb-3 flex items-start gap-2 rounded-[4px] bg-[#fff7ed] px-3 py-2 text-[13px] font-medium text-[#6f4e1f]">
+                  <AlertTriangle className="mt-0.5 size-4 shrink-0 text-[#d97706]" />
+                  <span>Semua nilai SKU ini masih 0.</span>
                 </div>
+              )}
+              <div className="grid grid-cols-3 gap-2">
+                <ReviewMetric label="Harga" value={singleVariantDraft?.price ?? "0"} />
+                <ReviewMetric label="Stok Awal" value={singleVariantDraft?.stock ?? "0"} />
+                <ReviewMetric label="Min. Stok" value={singleVariantDraft?.minStock ?? "0"} />
+              </div>
+            </article>
+          ) : (
+            // Mode dengan variasi: render kartu per kombinasi SKU
+            reviewSummary.skuList.map((item) => {
+              const needsReview = item.isAllZero || item.hasStockWithoutPrice;
 
-                {needsReview && (
-                  <div className="mt-3 flex items-start gap-2 rounded-[4px] bg-[#fff7ed] px-3 py-2 text-[13px] font-medium text-[#6f4e1f]">
-                    <AlertTriangle className="mt-0.5 size-4 shrink-0 text-[#d97706]" />
-                    <span>
-                      {item.isAllZero
-                        ? "Semua nilai SKU ini masih 0."
-                        : "Stok awal sudah diisi, tetapi harga masih 0."}
-                    </span>
+              return (
+                <article
+                  key={item.combination.key}
+                  className={`rounded-[5px] border bg-[#fffefb] p-4 ${
+                    needsReview ? "border-[#d97706]" : "border-[#c5c0b1]"
+                  }`}
+                >
+                  <div className="flex flex-wrap gap-1.5">
+                    {item.combination.valueIds.map((valueId) => (
+                      <span
+                        key={valueId}
+                        className="rounded-[3px] bg-[#ff4f00]/10 px-2 py-0.5 text-[12px] font-bold uppercase text-[#ff4f00]"
+                      >
+                        {valueMap.get(valueId)}
+                      </span>
+                    ))}
                   </div>
-                )}
 
-                <div className="mt-4 grid grid-cols-3 gap-2">
-                  <ReviewMetric label="Harga" value={item.draft.price} />
-                  <ReviewMetric label="Stok Awal" value={item.draft.stock} />
-                  <ReviewMetric label="Min. Stok" value={item.draft.minStock} />
-                </div>
-              </article>
-            );
-          })}
+                  {needsReview && (
+                    <div className="mt-3 flex items-start gap-2 rounded-[4px] bg-[#fff7ed] px-3 py-2 text-[13px] font-medium text-[#6f4e1f]">
+                      <AlertTriangle className="mt-0.5 size-4 shrink-0 text-[#d97706]" />
+                      <span>
+                        {item.isAllZero
+                          ? "Semua nilai SKU ini masih 0."
+                          : "Stok awal sudah diisi, tetapi harga masih 0."}
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="mt-4 grid grid-cols-3 gap-2">
+                    <ReviewMetric label="Harga" value={item.draft.price} />
+                    <ReviewMetric label="Stok Awal" value={item.draft.stock} />
+                    <ReviewMetric label="Min. Stok" value={item.draft.minStock} />
+                  </div>
+                </article>
+              );
+            })
+          )}
         </div>
       </section>
     </div>

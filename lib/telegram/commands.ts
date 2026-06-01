@@ -25,6 +25,7 @@ import {
 import {
   buildDailyReportMessage,
   buildLowStockMessage,
+  buildSalesReportMessage,
   formatLinkedUser,
 } from "@/lib/telegram/reports";
 import {
@@ -46,6 +47,7 @@ const helpMessage = [
   "barang masuk kertas a4 10 dari supplier",
   "stok minimum",
   "laporan",
+  "laporan penjualan 2026-05-01 2026-05-25",
   "",
   "Jika bot meminta pilihan, balas angka pilihan barang.",
   "Jika bot meminta catatan, balas isi catatan atau balas - untuk melewati.",
@@ -177,6 +179,8 @@ async function handleFreshIntent(
       return await buildLowStockMessage();
     case "report":
       return await buildDailyReportMessage();
+    case "salesReport":
+      return await buildSalesReportMessage(intent.from, intent.to);
     case "lookup":
       return await handleLookupIntent(intent.query, context);
     case "stock":

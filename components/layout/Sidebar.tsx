@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
@@ -20,7 +21,7 @@ import { signOut, useSession } from "next-auth/react";
 const mainNavItems = [
   { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { title: "Produk", href: "/products", icon: Package },
-  { title: "Kasir (Keluar)", href: "/stock/out", icon: ArrowUpFromLine },
+  { title: "Kasir", href: "/stock/out", icon: ArrowUpFromLine },
   { title: "Barang Masuk", href: "/stock/in", icon: ArrowDownToLine },
   { title: "Riwayat", href: "/stock/history", icon: History },
 ];
@@ -47,9 +48,14 @@ export function Sidebar() {
     >
       <div className="px-6 py-5 border-b border-[#eceae3]">
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded bg-[#ff4f00] flex items-center justify-center flex-shrink-0">
-            <Package className="w-4 h-4 text-white" />
-          </div>
+          <Image
+            src="/logo.png"
+            alt="Asih Plastik"
+            width={28}
+            height={28}
+            className="rounded flex-shrink-0 mix-blend-multiply"
+            priority
+          />
           <div>
             <span className="text-[16px] font-semibold text-[#201515] tracking-tight">
               Asih Plastik

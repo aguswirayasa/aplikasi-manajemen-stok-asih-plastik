@@ -8,7 +8,9 @@ export default async function DashboardPage() {
   const user = await requirePageAuth();
   const isAdmin = user.role === "ADMIN";
 
-  const data = await getDashboardData({ includeOwnerTotals: isAdmin });
+  const data = await getDashboardData({
+    includeOwnerTotals: isAdmin,
+  });
   const displayName = user.name || user.username;
 
   return (

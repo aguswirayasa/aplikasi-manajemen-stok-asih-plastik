@@ -1,5 +1,11 @@
 import prisma from "@/lib/prisma";
 import { getDashboardData } from "@/lib/dashboard-data";
+import {
+  buildSalesPeriodFilter,
+  getSalesReport,
+  type SalesReport,
+} from "@/lib/sales";
+import { formatStockCurrency } from "@/lib/stock-format";
 import { sendTelegramMessage } from "@/lib/telegram/client";
 import type { LinkedTelegramUser } from "@/lib/telegram/types";
 
@@ -10,12 +16,6 @@ const reportDateFormatter = new Intl.DateTimeFormat("id-ID", {
   day: "2-digit",
   month: "short",
   year: "numeric",
-  hour: "2-digit",
-  minute: "2-digit",
-});
-
-const transactionDateFormatter = new Intl.DateTimeFormat("id-ID", {
-  timeZone: "Asia/Singapore",
   hour: "2-digit",
   minute: "2-digit",
 });
@@ -35,11 +35,11 @@ function formatVariation(values: LowStockVariant["values"]) {
 
 function formatActionSection(variants: LowStockVariant[]) {
   if (variants.length === 0) {
-    return "Perlu Dicek:\n- Semua SKU aktif masih aman.";
+    return "SKU di bawah stok minimum:\n- Semua SKU aktif masih aman.";
   }
 
   return [
-    "Perlu Dicek:",
+    "SKU di bawah stok minimum:",
     ...variants.map(
       (variant, index) =>
         `${index + 1}. ${variant.sku} - ${variant.product.name} (${formatVariation(
@@ -71,6 +71,12 @@ export async function buildLowStockMessage() {
   return formatLowStockSection(data.lowStockVariants);
 }
 
+export async function buildSalesReportMessage(from: string, to: string) {
+  const report = await getSalesReport(buildSalesPeriodFilter(from, to), 5);
+
+  return formatSalesReportSection(report, "Laporan penjualan");
+}
+
 export async function buildDailyReportMessage(kind: TelegramReportKind = "daily") {
   const data = await getDashboardData({
     includeOwnerTotals: true,
@@ -83,40 +89,40 @@ export async function buildDailyReportMessage(kind: TelegramReportKind = "daily"
   }
 
   const generatedAt = reportDateFormatter.format(new Date());
-  const recentTransactions =
-    data.recentTransactions.length === 0
-      ? ["Pergerakan terbaru:", "- Belum ada pergerakan stok terbaru."]
-      : [
-          "Pergerakan terbaru:",
-          ...data.recentTransactions.map((transaction) => {
-            const direction = transaction.type === "IN" ? "Masuk" : "Keluar";
-            const signedQuantity =
-              transaction.type === "IN"
-                ? `+${transaction.quantity}`
-                : `-${transaction.quantity}`;
 
-            return `- ${transactionDateFormatter.format(
-              transaction.createdAt
-            )} ${direction} ${transaction.variant.sku} ${signedQuantity} oleh ${
-              transaction.user.name || transaction.user.username
-            }`;
-          }),
-        ];
+  if (kind === "opening") {
+    return [
+      `${formatReportTitle(kind)} - ${generatedAt}`,
+      "",
+      "Ringkasan status toko:",
+      `- SKU aktif: ${totals.activeSkus}`,
+      `- Produk aktif: ${totals.products}`,
+      `- Total stok tersedia: ${totals.totalStock}`,
+      `- SKU di bawah stok minimum: ${totals.lowStock}`,
+      "",
+      formatActionSection(data.lowStockVariants),
+    ].join("\n");
+  }
+
+  const salesSection = formatSalesReportSection(
+    data.salesReport,
+    "Ringkasan penjualan hari ini",
+    { includeLatestSales: false }
+  );
 
   return [
     `${formatReportTitle(kind)} - ${generatedAt}`,
     "",
-    formatActionSection(data.lowStockVariants),
+    salesSection,
     "",
-    "Ringkasan hari ini:",
+    "Ringkasan stok hari ini:",
     `- Barang masuk hari ini: ${data.today.stockIn}`,
-    `- Barang keluar hari ini: ${data.today.stockOut}`,
     `- SKU aktif: ${totals.activeSkus}`,
     `- Produk aktif: ${totals.products}`,
     `- Total stok: ${totals.totalStock}`,
-    `- SKU perlu dicek: ${totals.lowStock}`,
+    `- SKU di bawah stok minimum: ${totals.lowStock}`,
     "",
-    ...recentTransactions,
+    formatActionSection(data.lowStockVariants),
   ].join("\n");
 }
 
@@ -172,4 +178,35 @@ function formatReportTitle(kind: TelegramReportKind) {
   }
 
   return "Laporan Stok";
+}
+
+function formatSalesReportSection(
+  report: SalesReport | null,
+  title: string,
+  options: { includeLatestSales?: boolean } = {}
+) {
+  const includeLatestSales = options.includeLatestSales ?? true;
+
+  if (!report) {
+    return `${title}:\n- Data penjualan belum tersedia.`;
+  }
+
+  const latest =
+    report.latestSales.length === 0
+      ? ["- Belum ada transaksi pada periode ini."]
+      : report.latestSales.map(
+          (sale, index) =>
+            `${index + 1}. ${sale.receiptNumber} - ${formatStockCurrency(
+              Number(sale.totalAmount)
+            )}`
+        );
+
+  return [
+    `${title}:`,
+    `- Periode: ${report.period.fromInput} s/d ${report.period.toInput}`,
+    `- Omzet: ${formatStockCurrency(report.revenue)}`,
+    `- Transaksi: ${report.transactionCount}`,
+    `- Item terjual: ${report.itemCount}`,
+    ...(includeLatestSales ? ["Transaksi terbaru:", ...latest] : []),
+  ].join("\n");
 }

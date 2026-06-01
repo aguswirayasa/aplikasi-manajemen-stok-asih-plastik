@@ -42,7 +42,7 @@ export const POST = withErrorHandler(async (req: Request) => {
 
   const variationType = await prisma.variationType.create({
     data: { name: trimmed },
-    include: { _count: { select: { values: true } } },
+    include: { values: true, _count: { select: { values: true } } },
   });
 
   return apiResponse(

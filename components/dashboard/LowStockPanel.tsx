@@ -5,7 +5,6 @@ import {
 } from "@/lib/dashboard-format";
 import {
   DashboardEmptyState,
-  DashboardMiniMetric,
   DashboardPanel,
 } from "@/components/dashboard/DashboardPanel";
 import type { LowStockVariant } from "@/types/dashboard";
@@ -33,7 +32,7 @@ export function LowStockPanel({
             <Link
               href={`/products/${variant.productId}`}
               key={variant.id}
-              className="grid gap-3 border-l-4 border-l-[#ff4f00] p-4 transition-colors hover:bg-[#eceae3]/30 sm:grid-cols-[minmax(0,1fr)_120px]"
+              className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 border-l-4 border-l-[#ff4f00] p-4 transition-colors hover:bg-[#eceae3]/30"
             >
               <div className="min-w-0">
                 <p className="truncate text-[16px] font-bold text-[#201515]">
@@ -46,16 +45,19 @@ export function LowStockPanel({
                   {formatDashboardVariation(variant.values)}
                 </p>
               </div>
-              <div className="grid grid-cols-2 gap-2 space-y-2 sm:block sm:text-right">
-                <DashboardMiniMetric
-                  label="Stok"
-                  value={`${variant.stock}`}
-                  urgent={variant.stock <= variant.minStock}
-                />
-                <DashboardMiniMetric
-                  label="Minimum"
-                  value={`${variant.minStock}`}
-                />
+              <div className="flex flex-col items-end justify-start gap-1 text-right">
+                <p
+                  className={`text-[13px] font-bold uppercase leading-none ${
+                    variant.stock <= variant.minStock
+                      ? "text-[#ff4f00]"
+                      : "text-[#201515]"
+                  }`}
+                >
+                  Stok saat ini {variant.stock}
+                </p>
+                <p className="text-[13px] font-semibold uppercase tracking-[0.5px] text-[#939084]">
+                  minimum {variant.minStock}
+                </p>
               </div>
             </Link>
           ))

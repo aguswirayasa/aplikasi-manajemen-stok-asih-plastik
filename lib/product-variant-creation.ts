@@ -50,10 +50,11 @@ export function parseProductVariantInputs(input: unknown) {
       throw new ApiError("Data SKU tidak valid.", 400);
     }
 
-    if (!Array.isArray(item.valueIds) || item.valueIds.length === 0) {
+    if (!Array.isArray(item.valueIds)) {
       throw new ApiError("Kombinasi nilai SKU tidak valid.", 400);
     }
 
+    // valueIds kosong valid untuk produk tanpa variasi (satu varian tunggal)
     const valueIds = [...new Set(item.valueIds)];
 
     if (valueIds.length !== item.valueIds.length) {
@@ -88,9 +89,50 @@ export async function createProductVariants(
     select: { variationTypeId: true },
   });
   const orderedTypeIds = productVariationTypes.map((item) => item.variationTypeId);
+  const initialStockBatchId = crypto.randomUUID();
 
-  if (orderedTypeIds.length === 0) {
-    throw new ApiError("Produk belum memiliki tipe variasi.", 400);
+  // Mode tanpa variasi: satu varian tunggal dengan valueIds kosong
+  const isTanpaVariasi = orderedTypeIds.length === 0;
+
+  if (isTanpaVariasi) {
+    if (variants.length !== 1 || variants[0].valueIds.length !== 0) {
+      throw new ApiError("Produk tanpa variasi hanya boleh memiliki satu varian tanpa nilai.", 400);
+    }
+
+    const variantInput = variants[0];
+    const skuBase = generateSkuString(product.name, []);
+    const sku = await getAvailableSku(tx, skuBase);
+
+    const variant = await tx.productVariant.create({
+      data: {
+        productId: product.id,
+        sku,
+        price: variantInput.price,
+        minStock: variantInput.minStock,
+      },
+    });
+
+    if (variantInput.stock > 0) {
+      if (!options.initialStockUserId) {
+        throw new ApiError("User pencatat stok awal tidak valid.", 400);
+      }
+
+      await tx.stockIn.create({
+        data: {
+          variantId: variant.id,
+          quantity: variantInput.stock,
+          note: INITIAL_STOCK_NOTE,
+          batchId: initialStockBatchId,
+          userId: options.initialStockUserId,
+        },
+      });
+      await tx.productVariant.update({
+        where: { id: variant.id },
+        data: { stock: { increment: variantInput.stock } },
+      });
+    }
+
+    return [{ ...variant, stock: variantInput.stock }];
   }
 
   const allValueIds = variants.flatMap((variant) => variant.valueIds);
@@ -151,6 +193,7 @@ export async function createProductVariants(
           variantId: variant.id,
           quantity: variantInput.stock,
           note: INITIAL_STOCK_NOTE,
+          batchId: initialStockBatchId,
           userId: options.initialStockUserId,
         },
       });

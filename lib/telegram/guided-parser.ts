@@ -7,6 +7,12 @@ export type TelegramGuidedIntent =
   | { kind: "me"; explicit: boolean }
   | { kind: "lowstock"; explicit: boolean }
   | { kind: "report"; explicit: boolean }
+  | {
+      kind: "salesReport";
+      from: string;
+      to: string;
+      explicit: boolean;
+    }
   | { kind: "lookup"; query: string | null; explicit: boolean }
   | {
       kind: "stock";
@@ -69,8 +75,12 @@ export function parseTelegramGuidedIntent(text: string): TelegramGuidedIntent {
       case "lowstock":
       case "minimum":
         return { kind: "lowstock", explicit: true };
-      case "report":
       case "laporan":
+        if (rest.toLowerCase().startsWith("penjualan ")) {
+          return parseSalesReportIntent(rest, true);
+        }
+        return { kind: "report", explicit: true };
+      case "report":
         return { kind: "report", explicit: true };
       case "stok":
       case "stock":
@@ -95,6 +105,10 @@ export function parseTelegramGuidedIntent(text: string): TelegramGuidedIntent {
 
   if (normalized === "laporan" || normalized === "report") {
     return { kind: "report", explicit: true };
+  }
+
+  if (normalized.startsWith("laporan penjualan ")) {
+    return parseSalesReportIntent(trimmed, true);
   }
 
   if (
@@ -133,6 +147,23 @@ export function parseTelegramGuidedIntent(text: string): TelegramGuidedIntent {
     kind: "lookup",
     query: trimmed,
     explicit: false,
+  };
+}
+
+function parseSalesReportIntent(
+  text: string,
+  explicit: boolean
+): Extract<TelegramGuidedIntent, { kind: "salesReport" }> {
+  const normalized = text
+    .replace(/^(?:laporan\s+)?penjualan\s+/i, "")
+    .trim();
+  const [from = "", to = ""] = normalized.split(/\s+/);
+
+  return {
+    kind: "salesReport",
+    from,
+    to,
+    explicit,
   };
 }
 

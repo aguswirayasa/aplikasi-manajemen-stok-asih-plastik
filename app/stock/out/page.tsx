@@ -1,20 +1,22 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { FormEvent, useMemo, useState } from "react";
+import Link from "next/link";
+import { FormEvent, useMemo, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
-import { PackageMinus, ReceiptText } from "lucide-react";
+import { ExternalLink, PackageMinus, Printer, ReceiptText } from "lucide-react";
+import { useReactToPrint } from "react-to-print";
+import { SaleReceipt } from "@/components/stock/SaleReceipt";
 import { StockOutCartLine } from "@/components/stock/StockOutCartLine";
 import { StockOutSummary } from "@/components/stock/StockOutSummary";
 import { getStockVariantPrice } from "@/lib/stock-format";
 import type { StockLine } from "@/types/stock";
+import type { SaleReceiptData } from "@/types/sales";
 import {
   StockVariantOption,
   VariantSelect,
 } from "@/components/stock/VariantSelect";
-
-const CASHIER_SALE_NOTE = "Transaksi penjualan kasir";
 
 function newLine(variant: StockVariantOption): StockLine {
   const randomPart =
@@ -33,7 +35,16 @@ export default function StockOutPage() {
   const router = useRouter();
   const { data: session } = useSession();
   const [lines, setLines] = useState<StockLine[]>([]);
+  const [paidAmount, setPaidAmount] = useState("");
+  const [completedSale, setCompletedSale] = useState<SaleReceiptData | null>(
+    null,
+  );
   const [loading, setLoading] = useState(false);
+  const receiptRef = useRef<HTMLDivElement>(null);
+  const printReceipt = useReactToPrint({
+    contentRef: receiptRef,
+    documentTitle: completedSale?.receiptNumber || "struk-penjualan",
+  });
 
   const hasInvalidQuantity = lines.some(
     (line) => typeof line.quantity !== "number" || line.quantity <= 0,
@@ -58,6 +69,14 @@ export default function StockOutPage() {
       ),
     [lines],
   );
+  const numericPaidAmount = Number(paidAmount || 0);
+  const changeAmount = numericPaidAmount - totals.amount;
+  const hasInvalidPaidAmount =
+    paidAmount.trim().length === 0 ||
+    !Number.isFinite(numericPaidAmount) ||
+    numericPaidAmount < 0;
+  const hasUnderpaid =
+    lines.length > 0 && !hasInvalidPaidAmount && numericPaidAmount < totals.amount;
 
   const cashierName =
     session?.user?.name || session?.user?.username || "Kasir aktif";
@@ -113,10 +132,15 @@ export default function StockOutPage() {
       return;
     }
 
+    if (hasInvalidPaidAmount || hasUnderpaid) {
+      toast.error("Uang dibayar harus cukup untuk total transaksi.");
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const response = await fetch("/api/stock/out", {
+      const response = await fetch("/api/sales", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -124,7 +148,7 @@ export default function StockOutPage() {
             variantId: line.variant.id,
             quantity: line.quantity,
           })),
-          note: CASHIER_SALE_NOTE,
+          paidAmount: numericPaidAmount,
         }),
       });
 
@@ -134,7 +158,11 @@ export default function StockOutPage() {
         throw new Error(data.error || "Gagal mencatat transaksi kasir.");
       }
 
-      toast.success(data.message || "Transaksi kasir berhasil dicatat.");
+      const sale = data.data as SaleReceiptData;
+
+      setCompletedSale(sale);
+      setPaidAmount("");
+      toast.success(data.message || "Transaksi penjualan berhasil dicatat.");
       clearCart();
       router.refresh();
     } catch (error) {
@@ -219,14 +247,56 @@ export default function StockOutPage() {
           lineCount={lines.length}
           totalQuantity={totals.quantity}
           totalAmount={totals.amount}
+          paidAmount={paidAmount}
+          changeAmount={changeAmount}
           hasOverStock={hasOverStock}
+          hasUnderpaid={hasUnderpaid}
           loading={loading}
           submitDisabled={
-            loading || lines.length === 0 || hasInvalidQuantity || hasOverStock
+            loading ||
+            lines.length === 0 ||
+            hasInvalidQuantity ||
+            hasOverStock ||
+            hasInvalidPaidAmount ||
+            hasUnderpaid
           }
+          onPaidAmountChange={setPaidAmount}
           onClearCart={clearCart}
         />
       </div>
+
+      {completedSale && (
+        <section className="mt-5 grid gap-4 rounded-[8px] border border-[#c5c0b1] bg-[#fffefb] p-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+          <div>
+            <p className="text-[12px] font-semibold uppercase tracking-[0.5px] text-[#939084]">
+              Transaksi selesai
+            </p>
+            <p className="mt-1 text-[18px] font-bold text-[#201515]">
+              {completedSale.receiptNumber}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={printReceipt}
+              className="inline-flex min-h-11 items-center gap-2 rounded-[5px] border border-[#ff4f00] bg-[#ff4f00] px-4 text-[14px] font-bold text-[#fffefb] hover:bg-[#e64600]"
+            >
+              <Printer className="h-4 w-4" />
+              Cetak struk
+            </button>
+            <Link
+              href={`/sales/${completedSale.id}`}
+              className="inline-flex min-h-11 items-center gap-2 rounded-[5px] border border-[#c5c0b1] bg-[#fffefb] px-4 text-[14px] font-bold text-[#201515] hover:bg-[#eceae3]"
+            >
+              <ExternalLink className="h-4 w-4" />
+              Detail
+            </Link>
+          </div>
+          <div className="fixed -left-[10000px] top-0">
+            <SaleReceipt ref={receiptRef} sale={completedSale} />
+          </div>
+        </section>
+      )}
     </form>
   );
 }

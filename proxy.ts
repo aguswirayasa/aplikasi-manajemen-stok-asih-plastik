@@ -22,6 +22,7 @@ export default withAuth(
         const protectedPrefixes = [
           "/dashboard",
           "/stock",
+          "/sales",
           "/products",
           "/telegram",
           "/categories",
@@ -66,6 +67,7 @@ export const config = {
   matcher: [
     "/dashboard/:path*",
     "/stock/:path*",
+    "/sales/:path*",
     "/products/:path*",
     "/telegram/:path*",
     "/categories/:path*",

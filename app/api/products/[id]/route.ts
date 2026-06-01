@@ -116,6 +116,7 @@ export const PUT = withErrorHandler(async (
     const existingVariantMap = new Map(
       existingVariants.map((variant) => [variant.id, variant])
     );
+    const stockAdjustmentBatchId = crypto.randomUUID();
 
     for (const variant of variants) {
       const existingVariant = existingVariantMap.get(variant.id);
@@ -125,7 +126,13 @@ export const PUT = withErrorHandler(async (
       }
 
       await updateProductVariant(tx, variant, existingVariant);
-      await applyAuditedStockDelta(tx, user.id, variant, existingVariant);
+      await applyAuditedStockDelta(
+        tx,
+        user.id,
+        stockAdjustmentBatchId,
+        variant,
+        existingVariant
+      );
     }
 
     return tx.product.update({
@@ -288,6 +295,7 @@ async function updateProductVariant(
 async function applyAuditedStockDelta(
   tx: Prisma.TransactionClient,
   userId: string,
+  batchId: string,
   variant: ParsedVariantUpdate,
   existingVariant: ExistingVariant
 ) {
@@ -303,6 +311,7 @@ async function applyAuditedStockDelta(
         variantId: variant.id,
         quantity: delta,
         note: PRODUCT_EDIT_STOCK_NOTE,
+        batchId,
         userId,
       },
     });
@@ -336,6 +345,7 @@ async function applyAuditedStockDelta(
       variantId: variant.id,
       quantity: quantityOut,
       note: PRODUCT_EDIT_STOCK_NOTE,
+      batchId,
       userId,
     },
   });

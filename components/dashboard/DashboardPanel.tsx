@@ -34,31 +34,6 @@ export function DashboardPanel({
   );
 }
 
-export function DashboardMiniMetric({
-  label,
-  value,
-  urgent,
-}: {
-  label: string;
-  value: string;
-  urgent?: boolean;
-}) {
-  return (
-    <div className="flex items-center justify-between rounded-[5px] border border-[#c5c0b1] bg-[#fffefb] p-3 sm:border-0 sm:bg-transparent sm:p-0">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.5px] text-[#939084]">
-        {label}
-      </p>
-      <p
-        className={`mt-1 text-[18px] font-bold leading-none ${
-          urgent ? "text-[#ff4f00]" : "text-[#201515]"
-        }`}
-      >
-        {value}
-      </p>
-    </div>
-  );
-}
-
 export function DashboardEmptyState({
   title,
   description,

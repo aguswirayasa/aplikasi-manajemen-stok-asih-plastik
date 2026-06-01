@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Eye, EyeOff, Loader2, Package } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -42,8 +43,15 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen w-full flex-col items-center justify-center bg-[#fffefb] p-4 sm:p-8">
       <div className="mb-8 flex flex-col items-center text-center">
-        <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-[8px] bg-[#ff4f00] text-[#fffefb]">
-          <Package className="h-6 w-6" aria-hidden="true" />
+        <div className="mb-2 flex h-12 w-12 items-center justify-center">
+          <Image
+            src="/logo.png"
+            alt="Asih Plastik"
+            width={48}
+            height={48}
+            className="rounded-[8px]"
+            priority
+          />
         </div>
         <h1 className="text-[32px] uppercase font-bold tracking-tight text-[#201515]">
           Asih Plastik

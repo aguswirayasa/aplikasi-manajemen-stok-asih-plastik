@@ -3,22 +3,31 @@
 import { AlertCircle, ReceiptText, Save } from "lucide-react";
 import { formatStockCurrency } from "@/lib/stock-format";
 import { StockSummaryRow } from "@/components/stock/StockLineParts";
+import { Input } from "@/components/ui/input";
 
 export function StockOutSummary({
   lineCount,
   totalQuantity,
   totalAmount,
+  paidAmount,
+  changeAmount,
   hasOverStock,
+  hasUnderpaid,
   loading,
   submitDisabled,
+  onPaidAmountChange,
   onClearCart,
 }: {
   lineCount: number;
   totalQuantity: number;
   totalAmount: number;
+  paidAmount: string;
+  changeAmount: number;
   hasOverStock: boolean;
+  hasUnderpaid: boolean;
   loading: boolean;
   submitDisabled: boolean;
+  onPaidAmountChange: (value: string) => void;
   onClearCart: () => void;
 }) {
   return (
@@ -48,10 +57,39 @@ export function StockOutSummary({
             </p>
           </div>
 
+          <div className="space-y-2">
+            <label
+              htmlFor="paidAmount"
+              className="text-[13px] font-bold text-[#201515]"
+            >
+              Uang dibayar
+            </label>
+            <Input
+              id="paidAmount"
+              type="number"
+              min={0}
+              inputMode="numeric"
+              value={paidAmount}
+              onChange={(event) => onPaidAmountChange(event.target.value)}
+              className="min-h-12 rounded-[5px] border-[#c5c0b1] bg-[#fffefb] text-[16px] font-semibold"
+              placeholder="0"
+            />
+            <StockSummaryRow
+              label="Kembalian"
+              value={formatStockCurrency(Math.max(changeAmount, 0))}
+            />
+          </div>
+
           {hasOverStock && (
             <div className="flex gap-2 rounded-[5px] border border-[#ff4f00] bg-[#fffefb] p-3 text-[13px] font-semibold text-[#ff4f00]">
               <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
               Ada item yang jumlahnya melebihi stok tersedia.
+            </div>
+          )}
+          {hasUnderpaid && (
+            <div className="flex gap-2 rounded-[5px] border border-[#ff4f00] bg-[#fffefb] p-3 text-[13px] font-semibold text-[#ff4f00]">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              Uang dibayar kurang dari total transaksi.
             </div>
           )}
         </div>

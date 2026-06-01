@@ -13,21 +13,22 @@ enum Role {
 }
 
 model User {
-  id               String              @id @default(cuid())
-  username         String              @unique
-  name             String              // Nama lengkap, untuk identifikasi kasir
+  id               String                      @id @default(cuid())
+  username         String                      @unique
+  name             String // Nama lengkap, untuk identifikasi kasir
   password         String
-  role             Role                @default(PEGAWAI)
-  isActive         Boolean             @default(true)
-  telegramChatId   String?             @unique
+  role             Role                        @default(PEGAWAI)
+  isActive         Boolean                     @default(true)
+  telegramChatId   String?                     @unique
   telegramUsername String?
   telegramLinkedAt DateTime?
   telegramTokens   TelegramLinkToken[]
   telegramStates   TelegramConversationState[]
   stockIns         StockIn[]
   stockOuts        StockOut[]
-  createdAt        DateTime            @default(now())
-  updatedAt        DateTime            @updatedAt
+  sales            Sale[]
+  createdAt        DateTime                    @default(now())
+  updatedAt        DateTime                    @updatedAt
 }
 
 model TelegramLinkToken {
@@ -70,7 +71,6 @@ model Product {
   id             String                 @id @default(cuid())
   name           String
   description    String?
-  image          String?                // Path atau URL gambar produk
   isArchived     Boolean                @default(false)
   archivedAt     DateTime?
   categoryId     String
@@ -94,7 +94,7 @@ model VariationType {
 
 model VariationValue {
   id                   String                @id @default(cuid())
-  value                String                // Contoh: Merah, Besar, 0.5mm
+  value                String // Contoh: Merah, Besar, 0.5mm
   variationTypeId      String
   variationType        VariationType         @relation(fields: [variationTypeId], references: [id])
   productVariantValues ProductVariantValue[]
@@ -111,7 +111,7 @@ model ProductVariationType {
   product         Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
   variationTypeId String
   variationType   VariationType @relation(fields: [variationTypeId], references: [id])
-  sortOrder       Int           // Urutan level: 1=Ukuran, 2=Warna, 3=Ketebalan
+  sortOrder       Int // Urutan level: 1=Ukuran, 2=Warna, 3=Ketebalan
 
   @@unique([productId, variationTypeId])
   @@index([productId])
@@ -129,6 +129,7 @@ model ProductVariant {
   values    ProductVariantValue[]
   stockIns  StockIn[]
   stockOuts StockOut[]
+  saleItems SaleItem[]
   createdAt DateTime              @default(now())
   updatedAt DateTime              @updatedAt
 
@@ -136,11 +137,11 @@ model ProductVariant {
 }
 
 model ProductVariantValue {
-  id               String          @id @default(cuid())
+  id               String         @id @default(cuid())
   variantId        String
-  variant          ProductVariant  @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  variant          ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
   variationValueId String
-  variationValue   VariationValue  @relation(fields: [variationValueId], references: [id])
+  variationValue   VariationValue @relation(fields: [variationValueId], references: [id])
 
   @@unique([variantId, variationValueId])
   @@index([variantId])
@@ -152,24 +153,65 @@ model StockIn {
   variant   ProductVariant @relation(fields: [variantId], references: [id])
   quantity  Int
   note      String?
+  // Pengelompokan: semua SKU pada satu kali pencatatan barang masuk berbagi batchId
+  batchId   String?        @db.VarChar(36)
   userId    String
   user      User           @relation(fields: [userId], references: [id])
   createdAt DateTime       @default(now())
 
   @@index([variantId])
   @@index([createdAt])
+  @@index([batchId])
 }
 
 model StockOut {
+  id         String         @id @default(cuid())
+  variantId  String
+  variant    ProductVariant @relation(fields: [variantId], references: [id])
+  quantity   Int
+  note       String?
+  // Pengelompokan barang keluar manual (non-penjualan); penjualan dikelompokkan lewat saleItem
+  batchId    String?        @db.VarChar(36)
+  userId     String
+  user       User           @relation(fields: [userId], references: [id]) // Kasir pencatat transaksi
+  saleItemId String?        @unique
+  saleItem   SaleItem?      @relation(fields: [saleItemId], references: [id])
+  createdAt  DateTime       @default(now())
+
+  @@index([variantId])
+  @@index([createdAt])
+  @@index([saleItemId])
+  @@index([batchId])
+}
+
+model Sale {
+  id            String     @id @default(cuid())
+  receiptNumber String     @unique
+  totalAmount   Decimal    @db.Decimal(12, 2)
+  paidAmount    Decimal    @db.Decimal(12, 2)
+  changeAmount  Decimal    @db.Decimal(12, 2)
+  cashierId     String
+  cashier       User       @relation(fields: [cashierId], references: [id])
+  items         SaleItem[]
+  createdAt     DateTime   @default(now())
+
+  @@index([createdAt])
+  @@index([cashierId])
+}
+
+model SaleItem {
   id        String         @id @default(cuid())
+  saleId    String
+  sale      Sale           @relation(fields: [saleId], references: [id], onDelete: Cascade)
   variantId String
   variant   ProductVariant @relation(fields: [variantId], references: [id])
   quantity  Int
-  note      String?
-  userId    String
-  user      User           @relation(fields: [userId], references: [id]) // Kasir pencatat transaksi
+  unitPrice Decimal        @db.Decimal(12, 2)
+  subtotal  Decimal        @db.Decimal(12, 2)
+  stockOut  StockOut?
   createdAt DateTime       @default(now())
 
+  @@index([saleId])
   @@index([variantId])
   @@index([createdAt])
 }
