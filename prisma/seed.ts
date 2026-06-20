@@ -6,6 +6,29 @@ import { createRequire } from "node:module";
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
 import { PrismaClient } from "../generated/prisma/client";
 
+function getDatabasePort() {
+  return process.env.DATABASE_PORT ? Number(process.env.DATABASE_PORT) : 3306;
+}
+
+function buildDatabaseUrlFromAdapterEnv() {
+  const {
+    DATABASE_HOST: host,
+    DATABASE_USER: user,
+    DATABASE_PASSWORD: password,
+    DATABASE_NAME: database,
+  } = process.env;
+
+  if (!host || !user || !database) {
+    return process.env.DATABASE_URL;
+  }
+
+  const credentials = password
+    ? `${encodeURIComponent(user)}:${encodeURIComponent(password)}`
+    : encodeURIComponent(user);
+
+  return `mysql://${credentials}@${host}:${getDatabasePort()}/${database}`;
+}
+
 function runMigrations() {
   console.log("Ensuring database schema exists...");
 
@@ -13,14 +36,17 @@ function runMigrations() {
   const prismaCli = require.resolve("prisma/build/index.js");
   execFileSync(process.execPath, [prismaCli, "migrate", "deploy"], {
     stdio: "inherit",
-    env: process.env,
+    env: {
+      ...process.env,
+      DATABASE_URL: buildDatabaseUrlFromAdapterEnv(),
+    },
   });
 }
 
 function createPrismaClient() {
   const adapter = new PrismaMariaDb({
     host: process.env.DATABASE_HOST,
-    port: process.env.DATABASE_PORT ? Number(process.env.DATABASE_PORT) : 3306,
+    port: getDatabasePort(),
     user: process.env.DATABASE_USER,
     password: process.env.DATABASE_PASSWORD,
     database: process.env.DATABASE_NAME,
@@ -61,6 +87,157 @@ type CreatedVariant = Awaited<
 >;
 
 let prisma: PrismaClient | null = null;
+
+type CountRow = {
+  count: bigint | number | string;
+};
+
+function readCount(rows: CountRow[]) {
+  const [row] = rows;
+  if (!row) {
+    return 0;
+  }
+
+  return Number(row.count);
+}
+
+async function hasTable(client: PrismaClient, tableName: string) {
+  const rows = await client.$queryRawUnsafe<CountRow[]>(
+    `SELECT COUNT(*) AS count
+     FROM information_schema.TABLES
+     WHERE TABLE_SCHEMA = DATABASE()
+       AND TABLE_NAME = ?`,
+    tableName
+  );
+
+  return readCount(rows) > 0;
+}
+
+async function hasColumn(
+  client: PrismaClient,
+  tableName: string,
+  columnName: string
+) {
+  const rows = await client.$queryRawUnsafe<CountRow[]>(
+    `SELECT COUNT(*) AS count
+     FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE()
+       AND TABLE_NAME = ?
+       AND COLUMN_NAME = ?`,
+    tableName,
+    columnName
+  );
+
+  return readCount(rows) > 0;
+}
+
+async function hasIndex(
+  client: PrismaClient,
+  tableName: string,
+  indexName: string
+) {
+  const rows = await client.$queryRawUnsafe<CountRow[]>(
+    `SELECT COUNT(*) AS count
+     FROM information_schema.STATISTICS
+     WHERE TABLE_SCHEMA = DATABASE()
+       AND TABLE_NAME = ?
+       AND INDEX_NAME = ?`,
+    tableName,
+    indexName
+  );
+
+  return readCount(rows) > 0;
+}
+
+async function ensureUserTelegramColumns(client: PrismaClient) {
+  if (!(await hasColumn(client, "User", "telegramChatId"))) {
+    await client.$executeRawUnsafe(
+      "ALTER TABLE `User` ADD COLUMN `telegramChatId` VARCHAR(191) NULL"
+    );
+  }
+
+  if (!(await hasColumn(client, "User", "telegramUsername"))) {
+    await client.$executeRawUnsafe(
+      "ALTER TABLE `User` ADD COLUMN `telegramUsername` VARCHAR(191) NULL"
+    );
+  }
+
+  if (!(await hasColumn(client, "User", "telegramLinkedAt"))) {
+    await client.$executeRawUnsafe(
+      "ALTER TABLE `User` ADD COLUMN `telegramLinkedAt` DATETIME(3) NULL"
+    );
+  }
+
+  if (!(await hasIndex(client, "User", "User_telegramChatId_key"))) {
+    await client.$executeRawUnsafe(
+      "CREATE UNIQUE INDEX `User_telegramChatId_key` ON `User`(`telegramChatId`)"
+    );
+  }
+}
+
+async function ensureTelegramLinkTokenTable(client: PrismaClient) {
+  if (await hasTable(client, "TelegramLinkToken")) {
+    return;
+  }
+
+  await client.$executeRawUnsafe(`
+    CREATE TABLE \`TelegramLinkToken\` (
+      \`id\` VARCHAR(191) NOT NULL,
+      \`tokenHash\` VARCHAR(191) NOT NULL,
+      \`userId\` VARCHAR(191) NOT NULL,
+      \`expiresAt\` DATETIME(3) NOT NULL,
+      \`usedAt\` DATETIME(3) NULL,
+      \`createdAt\` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+
+      UNIQUE INDEX \`TelegramLinkToken_tokenHash_key\`(\`tokenHash\`),
+      INDEX \`TelegramLinkToken_userId_idx\`(\`userId\`),
+      INDEX \`TelegramLinkToken_expiresAt_idx\`(\`expiresAt\`),
+      PRIMARY KEY (\`id\`)
+    ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+  `);
+
+  await client.$executeRawUnsafe(
+    "ALTER TABLE `TelegramLinkToken` ADD CONSTRAINT `TelegramLinkToken_userId_fkey` FOREIGN KEY (`userId`) REFERENCES `User`(`id`) ON DELETE CASCADE ON UPDATE CASCADE"
+  );
+}
+
+async function ensureTelegramConversationStateTable(client: PrismaClient) {
+  if (await hasTable(client, "TelegramConversationState")) {
+    return;
+  }
+
+  await client.$executeRawUnsafe(`
+    CREATE TABLE \`TelegramConversationState\` (
+      \`id\` VARCHAR(191) NOT NULL,
+      \`chatId\` VARCHAR(191) NOT NULL,
+      \`userId\` VARCHAR(191) NULL,
+      \`kind\` VARCHAR(191) NOT NULL,
+      \`payload\` JSON NOT NULL,
+      \`expiresAt\` DATETIME(3) NOT NULL,
+      \`createdAt\` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+      \`updatedAt\` DATETIME(3) NOT NULL,
+
+      UNIQUE INDEX \`TelegramConversationState_chatId_key\`(\`chatId\`),
+      INDEX \`TelegramConversationState_userId_idx\`(\`userId\`),
+      INDEX \`TelegramConversationState_expiresAt_idx\`(\`expiresAt\`),
+      PRIMARY KEY (\`id\`)
+    ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+  `);
+
+  await client.$executeRawUnsafe(
+    "ALTER TABLE `TelegramConversationState` ADD CONSTRAINT `TelegramConversationState_userId_fkey` FOREIGN KEY (`userId`) REFERENCES `User`(`id`) ON DELETE CASCADE ON UPDATE CASCADE"
+  );
+}
+
+async function ensureSeedSchema(client: PrismaClient) {
+  console.log("Verifying seed database objects...");
+
+  // Perbaikan defensif untuk database yang riwayat migrasinya sudah applied,
+  // tetapi objek fisik Telegram belum ada di MariaDB.
+  await ensureUserTelegramColumns(client);
+  await ensureTelegramLinkTokenTable(client);
+  await ensureTelegramConversationStateTable(client);
+}
 
 async function resetData(client: PrismaClient) {
   // Urutan hapus mengikuti dependency foreign key agar seed bisa diulang stabil.
@@ -170,6 +347,7 @@ async function createSale(
 async function main() {
   runMigrations();
   prisma = createPrismaClient();
+  await ensureSeedSchema(prisma);
 
   console.log("\nSeeding black-box fixture data...\n");
 
