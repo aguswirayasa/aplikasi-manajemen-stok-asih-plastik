@@ -13,7 +13,12 @@ export const GET = withErrorHandler(async () => {
   const types = await prisma.variationType.findMany({
     include: {
       _count: { select: { values: true, productVariationTypes: true } },
-      values: { orderBy: { value: "asc" } },
+      values: {
+        include: {
+          _count: { select: { productVariantValues: true } },
+        },
+        orderBy: { value: "asc" },
+      },
     },
     orderBy: { name: "asc" },
   });
@@ -42,7 +47,14 @@ export const POST = withErrorHandler(async (req: Request) => {
 
   const variationType = await prisma.variationType.create({
     data: { name: trimmed },
-    include: { values: true, _count: { select: { values: true } } },
+    include: {
+      values: {
+        include: {
+          _count: { select: { productVariantValues: true } },
+        },
+      },
+      _count: { select: { values: true, productVariationTypes: true } },
+    },
   });
 
   return apiResponse(
