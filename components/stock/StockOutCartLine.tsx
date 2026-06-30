@@ -1,5 +1,6 @@
 "use client";
 
+import type { Ref } from "react";
 import { AlertCircle } from "lucide-react";
 import {
   StockLineSummary,
@@ -18,11 +19,19 @@ export function StockOutCartLine({
   line,
   onQuantityChange,
   onRemove,
+  quantityRef,
+  onQuantityEnter,
+  onQuantityMovePrevious,
+  onQuantityMoveNext,
 }: {
   index: number;
   line: StockLine;
   onQuantityChange: (lineId: string, quantity: number | "") => void;
   onRemove: (lineId: string) => void;
+  quantityRef?: Ref<HTMLInputElement>;
+  onQuantityEnter?: () => void;
+  onQuantityMovePrevious?: () => void;
+  onQuantityMoveNext?: () => void;
 }) {
   const quantity = line.quantity;
   const isQuantityNumber = typeof quantity === "number";
@@ -57,10 +66,14 @@ export function StockOutCartLine({
       </div>
 
       <StockQuantityInput
+        ref={quantityRef}
         label="Qty"
         value={line.quantity}
         invalid={isOverStock}
         onChange={(quantity) => onQuantityChange(line.lineId, quantity)}
+        onEnter={onQuantityEnter}
+        onMovePrevious={onQuantityMovePrevious}
+        onMoveNext={onQuantityMoveNext}
         errorMessage={
           isOverStock ? (
             <p className="mt-2 flex items-center gap-1.5 text-[12px] font-semibold text-[#ff4f00]">

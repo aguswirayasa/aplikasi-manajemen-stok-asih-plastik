@@ -2,7 +2,14 @@
 
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { FormEvent, useMemo, useRef, useState } from "react";
+import {
+  FormEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { ExternalLink, PackageMinus, Printer, ReceiptText } from "lucide-react";
@@ -14,6 +21,7 @@ import { getStockVariantPrice } from "@/lib/stock-format";
 import type { StockLine } from "@/types/stock";
 import type { SaleReceiptData } from "@/types/sales";
 import {
+  type VariantSelectHandle,
   StockVariantOption,
   VariantSelect,
 } from "@/components/stock/VariantSelect";
@@ -40,7 +48,13 @@ export default function StockOutPage() {
     null,
   );
   const [loading, setLoading] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
   const receiptRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<VariantSelectHandle>(null);
+  const paidAmountRef = useRef<HTMLInputElement>(null);
+  const quantityRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const pendingFocusLineId = useRef<string | null>(null);
+  const pendingSearchFocus = useRef(false);
   const printReceipt = useReactToPrint({
     contentRef: receiptRef,
     documentTitle: completedSale?.receiptNumber || "struk-penjualan",
@@ -81,10 +95,126 @@ export default function StockOutPage() {
   const cashierName =
     session?.user?.name || session?.user?.username || "Kasir aktif";
 
+  const submitDisabled =
+    loading ||
+    lines.length === 0 ||
+    hasInvalidQuantity ||
+    hasOverStock ||
+    hasInvalidPaidAmount ||
+    hasUnderpaid;
+
+  const moveFocusInForm = (direction: -1 | 1) => {
+    const form = formRef.current;
+    if (!form) {
+      return;
+    }
+
+    const focusableElements = Array.from(
+      form.querySelectorAll<HTMLElement>(
+        [
+          'input:not([disabled]):not([type="hidden"])',
+          "textarea:not([disabled])",
+          "button:not([disabled])",
+          "select:not([disabled])",
+          'a[href]',
+          '[tabindex]:not([tabindex="-1"])',
+        ].join(","),
+      ),
+    ).filter((element) => element.offsetParent !== null);
+
+    if (focusableElements.length === 0) {
+      return;
+    }
+
+    const activeElement = document.activeElement;
+    const currentIndex =
+      activeElement instanceof HTMLElement
+        ? focusableElements.indexOf(activeElement)
+        : -1;
+    const nextIndex =
+      currentIndex === -1
+        ? direction > 0
+          ? 0
+          : focusableElements.length - 1
+        : Math.min(
+            Math.max(currentIndex + direction, 0),
+            focusableElements.length - 1,
+          );
+    const nextElement = focusableElements[nextIndex];
+
+    nextElement.focus();
+    if (
+      nextElement instanceof HTMLInputElement ||
+      nextElement instanceof HTMLTextAreaElement
+    ) {
+      nextElement.select();
+    }
+    nextElement.scrollIntoView({ block: "nearest" });
+  };
+
+  const handleFormKeyDown = (event: ReactKeyboardEvent<HTMLFormElement>) => {
+    if (event.defaultPrevented || !event.altKey) {
+      return;
+    }
+
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      moveFocusInForm(-1);
+      return;
+    }
+
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      moveFocusInForm(1);
+    }
+  };
+
+  useEffect(() => {
+    if (!pendingFocusLineId.current) {
+      if (pendingSearchFocus.current) {
+        searchRef.current?.focus();
+        pendingSearchFocus.current = false;
+      }
+      return;
+    }
+
+    quantityRefs.current[pendingFocusLineId.current]?.focus();
+    quantityRefs.current[pendingFocusLineId.current]?.select();
+    pendingFocusLineId.current = null;
+  }, [lines]);
+
+  useEffect(() => {
+    function handleShortcut(event: KeyboardEvent) {
+      if (event.key === "F2") {
+        event.preventDefault();
+        paidAmountRef.current?.focus();
+        paidAmountRef.current?.select();
+        return;
+      }
+
+      if (event.key === "F8") {
+        event.preventDefault();
+        if (!submitDisabled) {
+          formRef.current?.requestSubmit();
+        }
+        return;
+      }
+
+      if (event.key === "F9" && completedSale) {
+        event.preventDefault();
+        printReceipt();
+      }
+    }
+
+    document.addEventListener("keydown", handleShortcut);
+    return () => document.removeEventListener("keydown", handleShortcut);
+  }, [completedSale, printReceipt, submitDisabled]);
+
   const handleAddVariant = (variant: StockVariantOption) => {
     const existingLine = lines.find((line) => line.variant.id === variant.id);
 
     if (existingLine) {
+      pendingFocusLineId.current = existingLine.lineId;
       updateQuantity(
         existingLine.lineId,
         typeof existingLine.quantity === "number"
@@ -95,7 +225,9 @@ export default function StockOutPage() {
       return;
     }
 
-    setLines((current) => [...current, newLine(variant)]);
+    const line = newLine(variant);
+    pendingFocusLineId.current = line.lineId;
+    setLines((current) => [...current, line]);
   };
 
   const updateQuantity = (lineId: string, quantity: number | "") => {
@@ -106,12 +238,32 @@ export default function StockOutPage() {
     );
   };
 
-  const removeLine = (lineId: string) => {
+  const focusQuantityAt = (index: number) => {
+    const line = lines[index];
+    if (!line) {
+      return;
+    }
+
+    quantityRefs.current[line.lineId]?.focus();
+    quantityRefs.current[line.lineId]?.select();
+  };
+
+  const removeLine = (lineId: string, index: number) => {
+    const nextLine = lines[index + 1] ?? lines[index - 1];
+
+    quantityRefs.current[lineId] = null;
+    if (nextLine) {
+      pendingFocusLineId.current = nextLine.lineId;
+    } else {
+      pendingSearchFocus.current = true;
+    }
     setLines((current) => current.filter((line) => line.lineId !== lineId));
   };
 
   const clearCart = () => {
     setLines([]);
+    quantityRefs.current = {};
+    pendingSearchFocus.current = true;
   };
 
   const handleSubmit = async (event: FormEvent) => {
@@ -177,7 +329,12 @@ export default function StockOutPage() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="mx-auto max-w-[1180px] pb-8">
+    <form
+      ref={formRef}
+      onSubmit={handleSubmit}
+      onKeyDown={handleFormKeyDown}
+      className="mx-auto max-w-[1180px] pb-8"
+    >
       <header className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div className="flex items-start gap-3">
           <PackageMinus className="mt-1 h-7 w-7 text-[#ff4f00]" />
@@ -212,7 +369,12 @@ export default function StockOutPage() {
                 {lines.length} item
               </span>
             </div>
-            <VariantSelect onSelect={handleAddVariant} error={hasOverStock} />
+            <VariantSelect
+              ref={searchRef}
+              onSelect={handleAddVariant}
+              error={hasOverStock}
+              autoFocus
+            />
           </div>
 
           <div className="p-4 sm:p-5">
@@ -235,7 +397,13 @@ export default function StockOutPage() {
                     index={index}
                     line={line}
                     onQuantityChange={updateQuantity}
-                    onRemove={removeLine}
+                    onRemove={(lineId) => removeLine(lineId, index)}
+                    quantityRef={(element) => {
+                      quantityRefs.current[line.lineId] = element;
+                    }}
+                    onQuantityEnter={() => searchRef.current?.focus()}
+                    onQuantityMovePrevious={() => focusQuantityAt(index - 1)}
+                    onQuantityMoveNext={() => focusQuantityAt(index + 1)}
                   />
                 ))}
               </div>
@@ -252,16 +420,15 @@ export default function StockOutPage() {
           hasOverStock={hasOverStock}
           hasUnderpaid={hasUnderpaid}
           loading={loading}
-          submitDisabled={
-            loading ||
-            lines.length === 0 ||
-            hasInvalidQuantity ||
-            hasOverStock ||
-            hasInvalidPaidAmount ||
-            hasUnderpaid
-          }
+          submitDisabled={submitDisabled}
           onPaidAmountChange={setPaidAmount}
           onClearCart={clearCart}
+          paidAmountRef={paidAmountRef}
+          onPaidAmountEnter={() => {
+            if (!submitDisabled) {
+              formRef.current?.requestSubmit();
+            }
+          }}
         />
       </div>
 
@@ -279,14 +446,14 @@ export default function StockOutPage() {
             <button
               type="button"
               onClick={printReceipt}
-              className="inline-flex min-h-11 items-center gap-2 rounded-[5px] border border-[#ff4f00] bg-[#ff4f00] px-4 text-[14px] font-bold text-[#fffefb] hover:bg-[#e64600]"
+              className="inline-flex min-h-11 items-center gap-2 rounded-[5px] border border-[#ff4f00] bg-[#ff4f00] px-4 text-[14px] font-bold text-[#fffefb] outline-none hover:bg-[#e64600] focus-visible:border-[#201515] focus-visible:ring-3 focus-visible:ring-[#ff4f00]/35"
             >
               <Printer className="h-4 w-4" />
               Cetak struk
             </button>
             <Link
               href={`/sales/${completedSale.id}`}
-              className="inline-flex min-h-11 items-center gap-2 rounded-[5px] border border-[#c5c0b1] bg-[#fffefb] px-4 text-[14px] font-bold text-[#201515] hover:bg-[#eceae3]"
+              className="inline-flex min-h-11 items-center gap-2 rounded-[5px] border border-[#c5c0b1] bg-[#fffefb] px-4 text-[14px] font-bold text-[#201515] outline-none hover:bg-[#eceae3] focus-visible:border-[#ff4f00] focus-visible:ring-3 focus-visible:ring-[#ff4f00]/35"
             >
               <ExternalLink className="h-4 w-4" />
               Detail

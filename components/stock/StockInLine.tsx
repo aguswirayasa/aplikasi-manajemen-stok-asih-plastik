@@ -1,5 +1,6 @@
 "use client";
 
+import type { Ref } from "react";
 import type { StockLine } from "@/types/stock";
 import {
   StockLineSummary,
@@ -13,11 +14,19 @@ export function StockInLine({
   line,
   onQuantityChange,
   onRemove,
+  quantityRef,
+  onQuantityEnter,
+  onQuantityMovePrevious,
+  onQuantityMoveNext,
 }: {
   index: number;
   line: StockLine;
   onQuantityChange: (lineId: string, quantity: number | "") => void;
   onRemove: (lineId: string) => void;
+  quantityRef?: Ref<HTMLInputElement>;
+  onQuantityEnter?: () => void;
+  onQuantityMovePrevious?: () => void;
+  onQuantityMoveNext?: () => void;
 }) {
   return (
     <article className="grid gap-4 rounded-[8px] border border-[#c5c0b1] bg-[#eceae3]/30 p-4 md:grid-cols-[minmax(0,1fr)_130px_130px_44px] md:items-center">
@@ -35,9 +44,13 @@ export function StockInLine({
       />
 
       <StockQuantityInput
+        ref={quantityRef}
         label="Jumlah masuk"
         value={line.quantity}
         onChange={(quantity) => onQuantityChange(line.lineId, quantity)}
+        onEnter={onQuantityEnter}
+        onMovePrevious={onQuantityMovePrevious}
+        onMoveNext={onQuantityMoveNext}
       />
 
       <StockRemoveButton

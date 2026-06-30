@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
@@ -38,6 +39,36 @@ const adminNavItems = [
   { title: "Manajemen User", href: "/users", icon: Users },
   { title: "Telegram", href: "/telegram", icon: MessageCircle },
 ];
+
+function handleNavItemKeyDown(event: ReactKeyboardEvent<HTMLElement>) {
+  if (
+    event.key !== "ArrowUp" &&
+    event.key !== "ArrowLeft" &&
+    event.key !== "ArrowDown" &&
+    event.key !== "ArrowRight"
+  ) {
+    return;
+  }
+
+  const container = event.currentTarget.parentElement;
+  if (!container) {
+    return;
+  }
+
+  const items = Array.from(
+    container.querySelectorAll<HTMLElement>("a[href], button:not([disabled])"),
+  );
+  const currentIndex = items.indexOf(event.currentTarget);
+  if (currentIndex < 0) {
+    return;
+  }
+
+  event.preventDefault();
+  const direction =
+    event.key === "ArrowUp" || event.key === "ArrowLeft" ? -1 : 1;
+  const nextIndex = (currentIndex + direction + items.length) % items.length;
+  items[nextIndex]?.focus();
+}
 
 export function BottomNav() {
   const pathname = usePathname();
@@ -122,6 +153,7 @@ export function BottomNav() {
                       key={item.href}
                       href={item.href}
                       onClick={() => setIsMoreOpen(false)}
+                      onKeyDown={handleNavItemKeyDown}
                       className={cn(
                         "flex items-center gap-3 rounded px-3 py-3 text-sm font-medium transition-colors",
                         isActive
@@ -160,6 +192,7 @@ export function BottomNav() {
             <Link
               key={item.href}
               href={item.href}
+              onKeyDown={handleNavItemKeyDown}
               className={cn(
                 "flex flex-1 flex-col items-center justify-center gap-1 transition-colors",
                 isActive
@@ -183,6 +216,7 @@ export function BottomNav() {
             aria-expanded={isMoreOpen}
             aria-controls="mobile-admin-menu"
             onClick={() => setIsMoreOpen((current) => !current)}
+            onKeyDown={handleNavItemKeyDown}
             className={cn(
               "flex flex-1 flex-col items-center justify-center gap-1 transition-colors",
               isMoreActive || isMoreOpen

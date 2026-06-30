@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
+import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
@@ -35,6 +36,34 @@ const adminNavItems = [
 const integrationNavItems = [
   { title: "Telegram", href: "/telegram", icon: MessageCircle },
 ];
+
+function handleNavItemKeyDown(event: ReactKeyboardEvent<HTMLAnchorElement>) {
+  if (
+    event.key !== "ArrowUp" &&
+    event.key !== "ArrowLeft" &&
+    event.key !== "ArrowDown" &&
+    event.key !== "ArrowRight"
+  ) {
+    return;
+  }
+
+  const nav = event.currentTarget.closest("nav");
+  if (!nav) {
+    return;
+  }
+
+  const links = Array.from(nav.querySelectorAll<HTMLAnchorElement>("a[href]"));
+  const currentIndex = links.indexOf(event.currentTarget);
+  if (currentIndex < 0) {
+    return;
+  }
+
+  event.preventDefault();
+  const direction =
+    event.key === "ArrowUp" || event.key === "ArrowLeft" ? -1 : 1;
+  const nextIndex = (currentIndex + direction + links.length) % links.length;
+  links[nextIndex]?.focus();
+}
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -78,6 +107,7 @@ export function Sidebar() {
             <Link
               key={item.href}
               href={item.href}
+              onKeyDown={handleNavItemKeyDown}
               className={cn(
                 "flex items-center gap-3 px-3 py-2 rounded text-sm font-medium transition-colors",
                 isActive
@@ -113,6 +143,7 @@ export function Sidebar() {
                 <Link
                   key={item.href}
                   href={item.href}
+                  onKeyDown={handleNavItemKeyDown}
                   className={cn(
                     "flex items-center gap-3 px-3 py-2 rounded text-sm font-medium transition-colors",
                     isActive
@@ -150,6 +181,7 @@ export function Sidebar() {
                 <Link
                   key={item.href}
                   href={item.href}
+                  onKeyDown={handleNavItemKeyDown}
                   className={cn(
                     "flex items-center gap-3 px-3 py-2 rounded text-sm font-medium transition-colors",
                     isActive

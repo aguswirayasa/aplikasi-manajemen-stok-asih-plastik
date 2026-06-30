@@ -1,6 +1,7 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { forwardRef } from "react";
+import type { KeyboardEvent, ReactNode } from "react";
 import { Trash2 } from "lucide-react";
 
 export function StockLineSummary({
@@ -57,25 +58,65 @@ export function StockMetric({
   );
 }
 
-export function StockQuantityInput({
-  label,
-  value,
-  onChange,
-  invalid,
-  errorMessage,
-}: {
+export const StockQuantityInput = forwardRef<
+  HTMLInputElement,
+  {
   label: string;
   value: number | "";
   onChange: (quantity: number | "") => void;
   invalid?: boolean;
   errorMessage?: ReactNode;
-}) {
+  onEnter?: () => void;
+  onMovePrevious?: () => void;
+  onMoveNext?: () => void;
+}
+>(function StockQuantityInput(
+  {
+    label,
+    value,
+    onChange,
+    invalid,
+    errorMessage,
+    onEnter,
+    onMovePrevious,
+    onMoveNext,
+  },
+  ref,
+) {
+  const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.altKey && event.key === "ArrowUp" && onMovePrevious) {
+      event.preventDefault();
+      onMovePrevious();
+      return;
+    }
+
+    if (event.altKey && event.key === "ArrowDown" && onMoveNext) {
+      event.preventDefault();
+      onMoveNext();
+      return;
+    }
+
+    if (event.key !== "Enter") {
+      return;
+    }
+
+    event.preventDefault();
+
+    if (event.shiftKey && onMovePrevious) {
+      onMovePrevious();
+      return;
+    }
+
+    onEnter?.();
+  };
+
   return (
     <div>
       <label className="mb-2 block text-[13px] font-bold text-[#201515] md:sr-only">
         {label}
       </label>
       <input
+        ref={ref}
         type="number"
         min="1"
         inputMode="numeric"
@@ -84,6 +125,7 @@ export function StockQuantityInput({
         onChange={(event) =>
           onChange(event.target.value === "" ? "" : Number(event.target.value))
         }
+        onKeyDown={handleKeyDown}
         className={`min-h-12 w-full rounded-[5px] border bg-[#fffefb] px-3 text-[18px] font-semibold outline-none focus:border-[#ff4f00] ${
           invalid
             ? "border-[#ff4f00] text-[#ff4f00]"
@@ -94,7 +136,7 @@ export function StockQuantityInput({
       {errorMessage}
     </div>
   );
-}
+});
 
 export function StockRemoveButton({
   sku,
@@ -107,7 +149,7 @@ export function StockRemoveButton({
     <button
       type="button"
       onClick={onRemove}
-      className="flex min-h-11 items-center justify-center rounded-[5px] border border-[#c5c0b1] bg-[#fffefb] text-[#939084] hover:bg-[#eceae3] hover:text-[#ff4f00]"
+      className="flex min-h-11 items-center justify-center rounded-[5px] border border-[#c5c0b1] bg-[#fffefb] text-[#939084] outline-none transition-shadow hover:bg-[#eceae3] hover:text-[#ff4f00] focus-visible:border-[#ff4f00] focus-visible:ring-3 focus-visible:ring-[#ff4f00]/35"
       aria-label={`Hapus ${sku}`}
     >
       <Trash2 className="h-4 w-4" />
