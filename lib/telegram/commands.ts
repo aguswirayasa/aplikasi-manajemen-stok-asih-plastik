@@ -1,4 +1,5 @@
 import { ApiError } from "@/lib/api-helpers";
+import prisma from "@/lib/prisma";
 import { recordStockIn, recordStockOut } from "@/lib/stock-mutations";
 import {
   clearTelegramConversationState,
@@ -352,6 +353,21 @@ async function handleStockChoice(
     return await askQuantity(context, state.action, variant, state.note);
   }
 
+  const stockError = await getStockQuantityError(
+    state.action,
+    variant,
+    state.quantity
+  );
+
+  if (stockError) {
+    return await askQuantityAfterStockError(context, {
+      action: state.action,
+      variant,
+      note: state.note,
+      message: stockError,
+    });
+  }
+
   return await askNoteOrConfirmation(context, {
     action: state.action,
     variant,
@@ -369,6 +385,19 @@ async function handleQuantityReply(
 
   if (!quantity) {
     return "Jumlah harus angka lebih dari 0. Contoh: 2. Balas jumlah barang, atau ketik batal.";
+  }
+
+  const stockError = await getStockQuantityError(
+    state.action,
+    state.variant,
+    quantity
+  );
+
+  if (stockError) {
+    return [
+      stockError,
+      "Balas jumlah barang yang sesuai stok tersedia, atau ketik batal.",
+    ].join("\n");
   }
 
   return await askNoteOrConfirmation(context, {
@@ -452,6 +481,16 @@ async function askNoteOrConfirmation(
     note: string | null;
   }
 ) {
+  const stockError = await getStockQuantityError(
+    payload.action,
+    payload.variant,
+    payload.quantity
+  );
+
+  if (stockError) {
+    throw new ApiError(stockError, 409);
+  }
+
   if (payload.note) {
     return await askStockConfirmation(context, {
       kind: "confirmStock",
@@ -500,6 +539,66 @@ async function askStockConfirmation(
     "",
     "Jika sudah benar, balas ya. Jika salah, ketik batal.",
   ].join("\n");
+}
+
+async function askQuantityAfterStockError(
+  context: ActionReplyContext,
+  payload: {
+    action: TelegramStockAction;
+    variant: TelegramVariantSnapshot;
+    note: string | null;
+    message: string;
+  }
+) {
+  await saveTelegramConversationState(context.chatId, context.user.id, {
+    kind: "awaitQuantity",
+    action: payload.action,
+    variant: payload.variant,
+    note: payload.note,
+  });
+
+  return [
+    payload.message,
+    "Balas jumlah barang yang sesuai stok tersedia, atau ketik batal.",
+  ].join("\n");
+}
+
+async function getStockQuantityError(
+  action: TelegramStockAction,
+  variant: TelegramVariantSnapshot,
+  quantity: number
+) {
+  if (action !== "stockOut") {
+    return null;
+  }
+
+  const latestVariant = await prisma.productVariant.findUnique({
+    where: { id: variant.id },
+    select: {
+      sku: true,
+      stock: true,
+      isActive: true,
+      product: { select: { isArchived: true } },
+    },
+  });
+
+  if (!latestVariant) {
+    return "SKU tidak ditemukan.";
+  }
+
+  if (!latestVariant.isActive) {
+    return "SKU tidak aktif dan tidak bisa dikeluarkan.";
+  }
+
+  if (latestVariant.product.isArchived) {
+    return "Produk yang sudah diarsipkan tidak bisa dikeluarkan.";
+  }
+
+  if (latestVariant.stock < quantity) {
+    return `Stok ${latestVariant.sku} tidak cukup. Tersedia ${latestVariant.stock}, diminta ${quantity}.`;
+  }
+
+  return null;
 }
 
 function pickVariantFromChoices(
