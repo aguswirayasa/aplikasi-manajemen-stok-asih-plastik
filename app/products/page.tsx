@@ -1,9 +1,10 @@
 import Link from "next/link";
 import type { Prisma } from "@/generated/prisma/client";
 import prisma from "@/lib/prisma";
-import { ChevronLeft, ChevronRight, Edit2, Eye, Plus, Search } from "lucide-react";
+import { Archive, ChevronLeft, ChevronRight, Edit2, Eye, Plus, Search } from "lucide-react";
 import { ProductCard } from "@/components/products/ProductCard";
 import { ProductDeleteAction } from "@/components/products/ProductDeleteAction";
+import { ProductRestoreAction } from "@/components/products/ProductRestoreAction";
 import { ProductStockStatus } from "@/components/products/ProductStockStatus";
 import { requirePageAuth } from "@/lib/page-auth";
 import { getProductSummary } from "@/lib/product-summary";
@@ -136,6 +137,8 @@ export default async function ProductsPage({
               {products.map(product => {
                 const { totalVariants, totalStock, stockStatus } =
                   getProductSummary(product);
+                const canManageActiveProduct =
+                  canEditProducts && !product.isArchived;
 
                 return (
                   <tr key={product.id} className="border-b border-[#c5c0b1] last:border-0 hover:bg-[#eceae3]/20 transition-colors">
@@ -144,7 +147,14 @@ export default async function ProductsPage({
                     <td className="p-4 text-[#36342e]">{totalVariants} SKUs</td>
                     <td className="p-4 text-[#36342e] font-semibold">{totalStock}</td>
                     <td className="p-4">
-                      <ProductStockStatus status={stockStatus} />
+                      {product.isArchived ? (
+                        <span className="inline-flex items-center gap-2 rounded-[20px] bg-[#eceae3] px-3 py-1 text-[13px] font-semibold text-[#6f6a5f]">
+                          <Archive className="h-4 w-4" />
+                          Diarsipkan
+                        </span>
+                      ) : (
+                        <ProductStockStatus status={stockStatus} />
+                      )}
                     </td>
                     <td className="p-4 text-right">
                       <div className="inline-flex items-center justify-end gap-2">
@@ -155,7 +165,15 @@ export default async function ProductsPage({
                         >
                           <Eye className="w-4 h-4" /> Detail
                         </Link>
-                        {canEditProducts && (
+                        {product.isArchived ? (
+                          canEditProducts ? (
+                            <ProductRestoreAction
+                              productId={product.id}
+                              productName={product.name}
+                              compact
+                            />
+                          ) : null
+                        ) : canManageActiveProduct ? (
                           <>
                             <Link
                               href={`/products/${product.id}/edit`}
@@ -170,7 +188,7 @@ export default async function ProductsPage({
                               compact
                             />
                           </>
-                        )}
+                        ) : null}
                       </div>
                     </td>
                   </tr>
@@ -278,7 +296,7 @@ function ProductPagination({
 }
 
 function buildProductWhere(searchQuery: string): Prisma.ProductWhereInput {
-  const where: Prisma.ProductWhereInput = { isArchived: false };
+  const where: Prisma.ProductWhereInput = {};
 
   if (!searchQuery) {
     return where;

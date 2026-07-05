@@ -221,6 +221,42 @@ export const DELETE = withErrorHandler(async (
   return apiResponse(result, 200, message);
 });
 
+export const PATCH = withErrorHandler(async (
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) => {
+  await requireAdmin();
+  const { id } = await params;
+
+  const product = await prisma.product.findUnique({
+    where: { id },
+    select: { id: true, isArchived: true },
+  });
+
+  if (!product) {
+    throw new ApiError("Produk tidak ditemukan.", 404);
+  }
+
+  if (!product.isArchived) {
+    throw new ApiError("Produk ini belum diarsipkan.", 409);
+  }
+
+  const restoredProduct = await prisma.product.update({
+    where: { id },
+    data: {
+      isArchived: false,
+      archivedAt: null,
+    },
+    select: {
+      id: true,
+      isArchived: true,
+      archivedAt: true,
+    },
+  });
+
+  return apiResponse(restoredProduct, 200, "Produk berhasil dipulihkan.");
+});
+
 function parseVariantUpdates(value: unknown): ParsedVariantUpdate[] {
   if (value === undefined) {
     return [];

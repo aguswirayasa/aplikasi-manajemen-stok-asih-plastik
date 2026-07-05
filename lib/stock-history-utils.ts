@@ -149,7 +149,7 @@ export function getStockHistoryTypeLabel(type: StockHistoryType) {
     case "in":
       return "Barang Masuk";
     case "sales":
-      return "Transaksi";
+      return "Penjualan";
     default:
       return "Semua";
   }

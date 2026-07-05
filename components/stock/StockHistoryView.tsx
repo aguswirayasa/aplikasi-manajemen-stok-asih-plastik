@@ -67,7 +67,7 @@ export function StockHistoryView({ result }: { result: StockHistoryResult }) {
               Riwayat Transaksi
             </h1>
             <p className="mt-1 max-w-[620px] text-[15px] leading-[1.25] text-[#939084]">
-              Filter barang masuk dan transaksi kasir, lalu unduh laporan dari
+              Filter barang masuk dan penjualan, lalu unduh laporan dari
               hasil yang sedang dipilih.
             </p>
           </div>
@@ -104,7 +104,7 @@ export function StockHistoryView({ result }: { result: StockHistoryResult }) {
             >
               <option value="all">Semua</option>
               <option value="in">Barang Masuk</option>
-              <option value="sales">Transaksi</option>
+              <option value="sales">Penjualan</option>
             </select>
           </label>
           <label className="space-y-1.5">
@@ -151,7 +151,7 @@ export function StockHistoryView({ result }: { result: StockHistoryResult }) {
               {getStockHistoryTypeLabel(filter.type)}
             </p>
             <p className="text-[12px] text-[#939084]">
-              Menampilkan {history.length} dari {pagination.totalItems} transaksi
+              Menampilkan {history.length} dari {pagination.totalItems} data
             </p>
           </div>
           <div className="rounded-[5px] border border-[#c5c0b1] bg-[#fffefb] px-3 py-2 text-[13px] font-semibold text-[#36342e]">
@@ -512,7 +512,7 @@ function TransactionType({ type }: { type: "IN" | "OUT" }) {
       ) : (
         <ArrowUpRight className="h-3.5 w-3.5 text-[#ff4f00]" />
       )}
-      {type === "IN" ? "Masuk" : "Keluar"}
+      {type === "IN" ? "Masuk" : "Penjualan"}
     </span>
   );
 }
@@ -537,7 +537,7 @@ function EmptyHistory() {
         Tidak ada data riwayat
       </h2>
       <p className="mt-1 max-w-[320px] text-[14px] text-[#939084]">
-        Ubah filter atau tanggal untuk melihat data barang masuk dan transaksi.
+        Ubah filter atau tanggal untuk melihat data barang masuk dan penjualan.
       </p>
     </div>
   );

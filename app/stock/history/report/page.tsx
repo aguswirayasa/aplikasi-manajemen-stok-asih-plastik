@@ -80,13 +80,13 @@ export default async function StockHistoryReportPage({
             />
             <ReportInfo
               label="Data laporan"
-              value={`${result.history.length} dari ${result.summary.totalRows} transaksi`}
+              value={`${result.history.length} dari ${result.summary.totalRows} data`}
             />
           </div>
 
           {result.summary.totalRows > STOCK_HISTORY_REPORT_LIMIT && (
             <p className="stock-history-report-limit-note">
-              Laporan menampilkan {STOCK_HISTORY_REPORT_LIMIT} transaksi terbaru
+              Laporan menampilkan {STOCK_HISTORY_REPORT_LIMIT} data terbaru
               dari filter ini. Persempit tanggal untuk melihat data lebih rinci.
             </p>
           )}
@@ -105,9 +105,9 @@ export default async function StockHistoryReportPage({
                 <td>{result.summary.totalStockInQuantity}</td>
               </tr>
               <tr>
-                <th>Qty transaksi</th>
+                <th>Qty penjualan</th>
                 <td>{result.summary.totalSalesQuantity}</td>
-                <th>Omzet transaksi</th>
+                <th>Omzet penjualan</th>
                 <td>{formatStockCurrency(result.summary.salesRevenue)}</td>
               </tr>
               <tr>
@@ -157,7 +157,7 @@ export default async function StockHistoryReportPage({
                           <>
                             <td rowSpan={group.lineCount}>{index + 1}</td>
                             <td rowSpan={group.lineCount}>
-                              {group.type === "IN" ? "Masuk" : "Keluar"}
+                              {group.type === "IN" ? "Masuk" : "Penjualan"}
                             </td>
                             <td rowSpan={group.lineCount}>
                               {reportDateFormatter.format(group.createdAt)}
