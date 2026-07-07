@@ -24,6 +24,7 @@ export type TelegramGuidedIntent =
     };
 
 const stockOutTriggers = [
+  "penjualan",
   "stok keluar",
   "stock keluar",
   "barang keluar",
@@ -88,6 +89,8 @@ export function parseTelegramGuidedIntent(text: string): TelegramGuidedIntent {
         return { kind: "lookup", query: rest || null, explicit: true };
       case "keluar":
       case "stockout":
+      case "penjualan":
+      case "jual":
         return parseStockIntent("stockOut", rest, true);
       case "masuk":
       case "stockin":

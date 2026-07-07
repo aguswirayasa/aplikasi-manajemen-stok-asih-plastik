@@ -19,6 +19,11 @@ export type TelegramVariantSnapshot = {
   isActive: boolean;
 };
 
+export type TelegramSaleCartItem = {
+  variant: TelegramVariantSnapshot;
+  quantity: number;
+};
+
 export type TelegramConversationPayload =
   | {
       kind: "lookupChoice";
@@ -49,6 +54,30 @@ export type TelegramConversationPayload =
       variant: TelegramVariantSnapshot;
       quantity: number;
       note: string | null;
+    }
+  | {
+      kind: "saleChoice";
+      variants: TelegramVariantSnapshot[];
+      quantity: number | null;
+      cart: TelegramSaleCartItem[];
+    }
+  | {
+      kind: "awaitSaleQuantity";
+      variant: TelegramVariantSnapshot;
+      cart: TelegramSaleCartItem[];
+    }
+  | {
+      kind: "awaitSaleNextAction";
+      cart: TelegramSaleCartItem[];
+    }
+  | {
+      kind: "awaitSalePayment";
+      cart: TelegramSaleCartItem[];
+    }
+  | {
+      kind: "confirmSale";
+      cart: TelegramSaleCartItem[];
+      paidAmount: number;
     };
 
 export async function getTelegramConversationState(chatId: string) {
@@ -192,6 +221,60 @@ function parseConversationPayload(
     };
   }
 
+  if (
+    kind === "saleChoice" &&
+    hasVariantArray(data) &&
+    hasNullableQuantity(data) &&
+    hasSaleCart(data.cart)
+  ) {
+    return {
+      kind,
+      variants: data.variants,
+      quantity: data.quantity,
+      cart: data.cart,
+    };
+  }
+
+  if (
+    kind === "awaitSaleQuantity" &&
+    hasVariant(data.variant) &&
+    hasSaleCart(data.cart)
+  ) {
+    return {
+      kind,
+      variant: data.variant,
+      cart: data.cart,
+    };
+  }
+
+  if (kind === "awaitSaleNextAction" && hasSaleCart(data.cart)) {
+    return {
+      kind,
+      cart: data.cart,
+    };
+  }
+
+  if (kind === "awaitSalePayment" && hasSaleCart(data.cart)) {
+    return {
+      kind,
+      cart: data.cart,
+    };
+  }
+
+  if (
+    kind === "confirmSale" &&
+    hasSaleCart(data.cart) &&
+    typeof data.paidAmount === "number" &&
+    data.paidAmount >= 0 &&
+    Number.isInteger(data.paidAmount)
+  ) {
+    return {
+      kind,
+      cart: data.cart,
+      paidAmount: data.paidAmount,
+    };
+  }
+
   return null;
 }
 
@@ -230,6 +313,24 @@ function hasVariantArray(
   variants: TelegramVariantSnapshot[];
 } {
   return Array.isArray(payload.variants) && payload.variants.every(hasVariant);
+}
+
+function hasSaleCart(
+  value: Prisma.JsonValue | undefined
+): value is TelegramSaleCartItem[] {
+  return (
+    Array.isArray(value) &&
+    value.every(
+      (item) =>
+        item &&
+        typeof item === "object" &&
+        !Array.isArray(item) &&
+        hasVariant(item.variant) &&
+        typeof item.quantity === "number" &&
+        item.quantity > 0 &&
+        Number.isInteger(item.quantity)
+    )
+  );
 }
 
 function hasVariant(

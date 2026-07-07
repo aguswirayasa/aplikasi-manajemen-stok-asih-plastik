@@ -1,11 +1,13 @@
 import { ApiError } from "@/lib/api-helpers";
 import prisma from "@/lib/prisma";
-import { recordStockIn, recordStockOut } from "@/lib/stock-mutations";
+import { checkoutSale, type SaleDetail } from "@/lib/sales";
+import { recordStockIn } from "@/lib/stock-mutations";
 import {
   clearTelegramConversationState,
   getTelegramConversationState,
   saveTelegramConversationState,
   type TelegramConversationPayload,
+  type TelegramSaleCartItem,
   type TelegramStockAction,
   type TelegramVariantSnapshot,
 } from "@/lib/telegram/conversation-state";
@@ -44,13 +46,14 @@ const helpMessage = [
   "",
   "Yang bisa Anda ketik:",
   "cek stok plastik hitam",
-  "barang keluar plastik kecil 2",
+  "penjualan plastik kecil 2",
   "barang masuk kertas a4 10 dari supplier",
   "stok minimum",
   "laporan",
   "laporan penjualan 2026-05-01 2026-05-25",
   "",
   "Jika bot meminta pilihan, balas angka pilihan barang.",
+  "Setelah item penjualan masuk, ketik item lain atau bayar untuk lanjut pembayaran.",
   "Jika bot meminta catatan, balas isi catatan atau balas - untuk melewati.",
   "Jika bot meminta konfirmasi, balas ya untuk menyimpan atau batal untuk berhenti.",
   "",
@@ -217,6 +220,16 @@ async function handlePendingConversation(
       return await handleNoteReply(text, state, context);
     case "confirmStock":
       return await handleStockConfirmation(text, state, context);
+    case "saleChoice":
+      return await handleSaleChoice(text, state, context);
+    case "awaitSaleQuantity":
+      return await handleSaleQuantityReply(text, state, context);
+    case "awaitSaleNextAction":
+      return await handleSaleNextAction(text, state, context);
+    case "awaitSalePayment":
+      return await handleSalePaymentReply(text, state, context);
+    case "confirmSale":
+      return await handleSaleConfirmation(text, state, context);
     default:
       return null;
   }
@@ -282,6 +295,10 @@ async function handleStockIntent(
   intent: Extract<TelegramGuidedIntent, { kind: "stock" }>,
   context: ActionReplyContext
 ) {
+  if (intent.action === "stockOut") {
+    return await handleSaleIntent(intent, context);
+  }
+
   if (!intent.query) {
     return formatStockUsage(intent.action);
   }
@@ -321,6 +338,174 @@ async function handleStockIntent(
     quantity: intent.quantity,
     note: intent.note,
   });
+}
+
+async function handleSaleIntent(
+  intent: Extract<TelegramGuidedIntent, { kind: "stock" }>,
+  context: ActionReplyContext,
+  cart: TelegramSaleCartItem[] = []
+) {
+  if (!intent.query) {
+    return formatStockUsage(intent.action);
+  }
+
+  const matches = await searchTelegramVariants(intent.query);
+
+  if (matches.length === 0) {
+    return formatNoMatchMessage(intent.query);
+  }
+
+  if (!shouldOpenVariantDirectly(matches)) {
+    await saveTelegramConversationState(context.chatId, context.user.id, {
+      kind: "saleChoice",
+      variants: matches.map((match) => match.variant),
+      quantity: intent.quantity,
+      cart,
+    });
+
+    return [
+      `Saya menemukan ${matches.length} pilihan untuk "${intent.query}".`,
+      "Balas angka barang yang benar, atau ketik batal.",
+      "",
+      formatVariantChoices(matches.map((match) => match.variant)),
+    ].join("\n");
+  }
+
+  const variant = matches[0].variant;
+
+  if (!intent.quantity) {
+    return await askSaleQuantity(context, variant, cart);
+  }
+
+  return await addSaleItemAndAskNext(context, cart, variant, intent.quantity);
+}
+
+async function handleSaleChoice(
+  text: string,
+  state: Extract<TelegramConversationPayload, { kind: "saleChoice" }>,
+  context: ActionReplyContext
+) {
+  const variant = pickVariantFromChoices(text, state.variants);
+
+  if (!variant) {
+    return "Balas dengan angka yang ada di daftar barang, atau ketik batal.";
+  }
+
+  if (!state.quantity) {
+    return await askSaleQuantity(context, variant, state.cart);
+  }
+
+  return await addSaleItemAndAskNext(
+    context,
+    state.cart,
+    variant,
+    state.quantity
+  );
+}
+
+async function handleSaleQuantityReply(
+  text: string,
+  state: Extract<TelegramConversationPayload, { kind: "awaitSaleQuantity" }>,
+  context: ActionReplyContext
+) {
+  const quantity = parsePositiveInteger(text);
+
+  if (!quantity) {
+    return "Jumlah harus angka lebih dari 0. Contoh: 2. Balas jumlah barang, atau ketik batal.";
+  }
+
+  return await addSaleItemAndAskNext(
+    context,
+    state.cart,
+    state.variant,
+    quantity
+  );
+}
+
+async function handleSaleNextAction(
+  text: string,
+  state: Extract<TelegramConversationPayload, { kind: "awaitSaleNextAction" }>,
+  context: ActionReplyContext
+) {
+  if (isSalePaymentText(text)) {
+    return await askSalePayment(context, state.cart);
+  }
+
+  const intent = parseTelegramGuidedIntent(`penjualan ${text}`);
+
+  if (intent.kind !== "stock" || intent.action !== "stockOut") {
+    return "Ketik nama atau kode item lain, atau ketik bayar untuk lanjut pembayaran.";
+  }
+
+  return await handleSaleIntent(intent, context, state.cart);
+}
+
+async function handleSalePaymentReply(
+  text: string,
+  state: Extract<TelegramConversationPayload, { kind: "awaitSalePayment" }>,
+  context: ActionReplyContext
+) {
+  const paidAmount = parseMoneyAmount(text);
+
+  if (paidAmount === null) {
+    return "Nominal bayar harus angka. Contoh: 50000. Ketik batal untuk membatalkan.";
+  }
+
+  const summary = await validateSaleCart(state.cart);
+
+  if (paidAmount < summary.totalAmount) {
+    await saveTelegramConversationState(context.chatId, context.user.id, state);
+    return [
+      `Uang dibayar kurang dari total transaksi ${formatCurrency(summary.totalAmount)}.`,
+      "Balas nominal pembayaran yang cukup, atau ketik batal.",
+    ].join("\n");
+  }
+
+  await saveTelegramConversationState(context.chatId, context.user.id, {
+    kind: "confirmSale",
+    cart: state.cart,
+    paidAmount,
+  });
+
+  return [
+    "Periksa dulu sebelum penjualan disimpan:",
+    formatSaleCartSummary(summary),
+    `Bayar: ${formatCurrency(paidAmount)}`,
+    `Kembalian: ${formatCurrency(paidAmount - summary.totalAmount)}`,
+    "",
+    "Jika sudah benar, balas ya. Jika salah, ketik batal.",
+  ].join("\n");
+}
+
+async function handleSaleConfirmation(
+  text: string,
+  state: Extract<TelegramConversationPayload, { kind: "confirmSale" }>,
+  context: ActionReplyContext
+) {
+  if (!isConfirmText(text)) {
+    return "Balas ya kalau data sudah benar dan ingin disimpan. Ketik batal untuk membatalkan.";
+  }
+
+  const summary = await validateSaleCart(state.cart);
+
+  if (state.paidAmount < summary.totalAmount) {
+    return await askSalePaymentAfterError(context, {
+      cart: state.cart,
+      message: `Total penjualan berubah menjadi ${formatCurrency(summary.totalAmount)}. Nominal bayar sebelumnya kurang.`,
+    });
+  }
+
+  const sale = await checkoutSale(context.user.id, {
+    items: summary.items.map((item) => ({
+      variantId: item.variant.id,
+      quantity: item.quantity,
+    })),
+    paidAmount: state.paidAmount,
+  });
+
+  await clearTelegramConversationState(context.chatId);
+
+  return formatSaleSuccessMessage(sale);
 }
 
 async function handleLookupChoice(
@@ -443,13 +628,8 @@ async function handleStockConfirmation(
     return `Berhasil disimpan. Stok masuk ${stockIn.variant.sku}: +${stockIn.quantity}.`;
   }
 
-  const [stockOut] = await recordStockOut(
-    context.user.id,
-    [{ variantId: state.variant.id, quantity: state.quantity }],
-    buildTelegramNote(state.note)
-  );
-
-  return `Berhasil disimpan. Stok keluar ${stockOut.variant.sku}: -${stockOut.quantity}.`;
+  await clearTelegramConversationState(context.chatId);
+  return "Flow barang keluar sudah diganti menjadi penjualan. Ketik penjualan nama barang jumlah untuk mencatat transaksi.";
 }
 
 async function askQuantity(
@@ -469,6 +649,85 @@ async function askQuantity(
     `${formatActionLabel(action)} untuk barang ini:`,
     formatVariantLine(variant),
     "Balas jumlah barangnya. Contoh: 2. Ketik batal untuk membatalkan.",
+  ].join("\n");
+}
+
+async function askSaleQuantity(
+  context: ActionReplyContext,
+  variant: TelegramVariantSnapshot,
+  cart: TelegramSaleCartItem[]
+) {
+  await saveTelegramConversationState(context.chatId, context.user.id, {
+    kind: "awaitSaleQuantity",
+    variant,
+    cart,
+  });
+
+  return [
+    "Penjualan untuk barang ini:",
+    formatVariantLine(variant),
+    "Balas jumlah barangnya. Contoh: 2. Ketik batal untuk membatalkan.",
+  ].join("\n");
+}
+
+async function addSaleItemAndAskNext(
+  context: ActionReplyContext,
+  cart: TelegramSaleCartItem[],
+  variant: TelegramVariantSnapshot,
+  quantity: number
+) {
+  const nextCart = combineSaleCartItems([...cart, { variant, quantity }]);
+  const summary = await validateSaleCart(nextCart);
+
+  await saveTelegramConversationState(context.chatId, context.user.id, {
+    kind: "awaitSaleNextAction",
+    cart: nextCart,
+  });
+
+  return [
+    "Item penjualan sudah masuk cart.",
+    formatSaleCartSummary(summary),
+    "",
+    "Ketik nama atau kode item lain untuk menambah barang.",
+    "Ketik bayar atau lanjut untuk masuk tahap pembayaran.",
+    "Ketik batal untuk membatalkan.",
+  ].join("\n");
+}
+
+async function askSalePayment(
+  context: ActionReplyContext,
+  cart: TelegramSaleCartItem[]
+) {
+  const summary = await validateSaleCart(cart);
+
+  await saveTelegramConversationState(context.chatId, context.user.id, {
+    kind: "awaitSalePayment",
+    cart,
+  });
+
+  return [
+    "Masukkan nominal uang dibayar.",
+    formatSaleCartSummary(summary),
+    `Total: ${formatCurrency(summary.totalAmount)}`,
+    "Contoh: 50000. Ketik batal untuk membatalkan.",
+  ].join("\n");
+}
+
+async function askSalePaymentAfterError(
+  context: ActionReplyContext,
+  payload: {
+    cart: TelegramSaleCartItem[];
+    message: string;
+  }
+) {
+  await saveTelegramConversationState(context.chatId, context.user.id, {
+    kind: "awaitSalePayment",
+    cart: payload.cart,
+  });
+
+  return [
+    payload.message,
+    "Balas nominal pembayaran yang cukup, atau ketik batal.",
   ].join("\n");
 }
 
@@ -601,6 +860,171 @@ async function getStockQuantityError(
   return null;
 }
 
+type ValidatedSaleCartItem = TelegramSaleCartItem & {
+  unitPrice: number;
+  subtotal: number;
+};
+
+type ValidatedSaleCart = {
+  items: ValidatedSaleCartItem[];
+  totalAmount: number;
+};
+
+async function validateSaleCart(
+  cart: TelegramSaleCartItem[]
+): Promise<ValidatedSaleCart> {
+  const combinedCart = combineSaleCartItems(cart);
+
+  if (combinedCart.length === 0) {
+    throw new ApiError("Tambahkan minimal satu item penjualan.", 400);
+  }
+
+  const variantIds = combinedCart.map((item) => item.variant.id);
+  const latestVariants = await prisma.productVariant.findMany({
+    where: { id: { in: variantIds } },
+    select: {
+      id: true,
+      sku: true,
+      price: true,
+      stock: true,
+      isActive: true,
+      product: { select: { isArchived: true } },
+    },
+  });
+  const latestById = new Map(
+    latestVariants.map((variant) => [variant.id, variant])
+  );
+
+  const items = combinedCart.map((item) => {
+    const latest = latestById.get(item.variant.id);
+
+    if (!latest) {
+      throw new ApiError(`SKU ${item.variant.sku} tidak ditemukan.`, 404);
+    }
+
+    if (!latest.isActive) {
+      throw new ApiError(`SKU ${latest.sku} tidak aktif.`, 409);
+    }
+
+    if (latest.product.isArchived) {
+      throw new ApiError(`Produk untuk SKU ${latest.sku} sudah diarsipkan.`, 409);
+    }
+
+    if (latest.stock < item.quantity) {
+      throw new ApiError(
+        `Stok ${latest.sku} tidak cukup. Tersedia ${latest.stock}, diminta ${item.quantity}.`,
+        409
+      );
+    }
+
+    const unitPrice = Number(latest.price);
+
+    return {
+      ...item,
+      variant: {
+        ...item.variant,
+        sku: latest.sku,
+        stock: latest.stock,
+      },
+      unitPrice,
+      subtotal: unitPrice * item.quantity,
+    };
+  });
+
+  return {
+    items,
+    totalAmount: items.reduce((total, item) => total + item.subtotal, 0),
+  };
+}
+
+function combineSaleCartItems(cart: TelegramSaleCartItem[]) {
+  const byVariant = new Map<string, TelegramSaleCartItem>();
+
+  for (const item of cart) {
+    const existing = byVariant.get(item.variant.id);
+
+    if (existing) {
+      existing.quantity += item.quantity;
+    } else {
+      byVariant.set(item.variant.id, {
+        variant: item.variant,
+        quantity: item.quantity,
+      });
+    }
+  }
+
+  return [...byVariant.values()];
+}
+
+function formatSaleCartSummary(summary: ValidatedSaleCart) {
+  return [
+    "Cart penjualan:",
+    ...summary.items.map(
+      (item, index) =>
+        `${index + 1}. ${item.variant.sku} - ${item.variant.productName} (${item.variant.variation}) x${item.quantity} = ${formatCurrency(item.subtotal)}`
+    ),
+    `Total: ${formatCurrency(summary.totalAmount)}`,
+  ].join("\n");
+}
+
+function formatSaleSuccessMessage(sale: SaleDetail) {
+  const totalAmount = Number(sale.totalAmount);
+  const paidAmount = Number(sale.paidAmount);
+  const changeAmount = Number(sale.changeAmount);
+
+  return [
+    "Penjualan berhasil disimpan.",
+    `No. struk: ${sale.receiptNumber}`,
+    "",
+    "Item:",
+    ...sale.items.map(
+      (item, index) =>
+        `${index + 1}. ${item.variant.sku} - ${item.variant.product.name} (${formatSaleItemVariation(item.variant.values)}) x${item.quantity} = ${formatCurrency(Number(item.subtotal))}`
+    ),
+    "",
+    `Total: ${formatCurrency(totalAmount)}`,
+    `Bayar: ${formatCurrency(paidAmount)}`,
+    `Kembalian: ${formatCurrency(changeAmount)}`,
+  ].join("\n");
+}
+
+function formatSaleItemVariation(
+  values: SaleDetail["items"][number]["variant"]["values"]
+) {
+  return (
+    values
+      .map((item) => item.variationValue.value)
+      .filter(Boolean)
+      .join(" / ") || "-"
+  );
+}
+
+function isSalePaymentText(text: string) {
+  return ["bayar", "pembayaran", "lanjut", "checkout"].includes(
+    normalizeReplyText(text)
+  );
+}
+
+function parseMoneyAmount(text: string) {
+  const normalized = text.trim();
+
+  if (!/^\d+$/.test(normalized)) {
+    return null;
+  }
+
+  const value = Number(normalized);
+
+  return Number.isSafeInteger(value) && value >= 0 ? value : null;
+}
+
+function formatCurrency(value: number) {
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
 function pickVariantFromChoices(
   text: string,
   variants: TelegramVariantSnapshot[]
@@ -659,11 +1083,11 @@ function formatStockUsage(action: TelegramStockAction) {
 }
 
 function formatActionLabel(action: TelegramStockAction) {
-  return action === "stockIn" ? "Barang masuk" : "Barang keluar";
+  return action === "stockIn" ? "Barang masuk" : "Penjualan";
 }
 
 function parseOptionalNoteReply(text: string) {
-  const normalized = text.trim().replace(/\s+/g, " ").toLowerCase();
+  const normalized = normalizeReplyText(text);
 
   if (
     normalized === "-" ||
@@ -679,6 +1103,10 @@ function parseOptionalNoteReply(text: string) {
 
 function buildTelegramNote(note: string | null) {
   return note ? `Telegram: ${note}` : "Telegram";
+}
+
+function normalizeReplyText(text: string) {
+  return text.trim().replace(/\s+/g, " ").toLowerCase();
 }
 
 async function requireLinkedTelegramUser(chatId: string) {

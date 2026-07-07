@@ -61,6 +61,24 @@ assert.deepEqual(parseTelegramGuidedIntent("keluar plastik kecil 2"), {
   explicit: true,
 });
 
+assert.deepEqual(parseTelegramGuidedIntent("penjualan plastik kecil 2"), {
+  kind: "stock",
+  action: "stockOut",
+  query: "plastik kecil",
+  quantity: 2,
+  note: null,
+  explicit: true,
+});
+
+assert.deepEqual(parseTelegramGuidedIntent("/penjualan plastik kecil 2"), {
+  kind: "stock",
+  action: "stockOut",
+  query: "plastik kecil",
+  quantity: 2,
+  note: null,
+  explicit: true,
+});
+
 assert.deepEqual(parseTelegramGuidedIntent("/masuk kertas a4 10 dari supplier"), {
   kind: "stock",
   action: "stockIn",
@@ -78,6 +96,16 @@ assert.deepEqual(
     query: "plastik kecil",
     quantity: 2,
     note: "retak",
+    explicit: true,
+  }
+);
+
+assert.deepEqual(
+  parseTelegramGuidedIntent("laporan penjualan 2026-05-01 2026-05-25"),
+  {
+    kind: "salesReport",
+    from: "2026-05-01",
+    to: "2026-05-25",
     explicit: true,
   }
 );
