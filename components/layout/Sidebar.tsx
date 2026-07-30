@@ -209,19 +209,6 @@ export function Sidebar() {
       </nav>
 
       <div className="px-3 py-3 border-t border-[#eceae3]">
-        <div className="flex items-center gap-2.5 px-3 py-2.5 rounded bg-[#eceae3] mb-1">
-          <div className="w-7 h-7 rounded-full bg-[#201515] flex items-center justify-center text-[#fffefb] text-xs font-bold flex-shrink-0">
-            {session?.user?.username?.charAt(0).toUpperCase() ?? "U"}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-semibold text-[#201515] truncate">
-              {session?.user?.name}
-            </p>
-            <p className="text-[10px] text-[#939084] truncate">
-              {session?.user?.role}
-            </p>
-          </div>
-        </div>
         <button
           onClick={() => signOut({ callbackUrl: "/login" })}
           className="flex w-full items-center gap-2.5 px-3 py-2 rounded text-sm text-[#939084] hover:bg-[#eceae3] hover:text-red-600 transition-colors"

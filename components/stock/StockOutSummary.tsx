@@ -78,18 +78,21 @@ export function StockOutSummary({
             >
               Uang dibayar
             </label>
-            <Input
-              ref={paidAmountRef}
-              id="paidAmount"
-              type="number"
-              min={0}
-              inputMode="numeric"
-              value={paidAmount}
-              onChange={(event) => onPaidAmountChange(event.target.value)}
-              onKeyDown={handlePaidAmountKeyDown}
-              className="min-h-12 rounded-[5px] border-[#c5c0b1] bg-[#fffefb] text-[16px] font-semibold"
-              placeholder="0"
-            />
+            <div className="flex justify-center items-center">
+              <p className="text-[13px] font-bold text-[#201515] mx-2">Rp.</p>
+              <Input
+                ref={paidAmountRef}
+                id="paidAmount"
+                type="number"
+                min={0}
+                inputMode="numeric"
+                value={paidAmount}
+                onChange={(event) => onPaidAmountChange(event.target.value)}
+                onKeyDown={handlePaidAmountKeyDown}
+                className="min-h-12 rounded-[5px] border-[#c5c0b1] bg-[#fffefb] text-[16px] font-semibold"
+                placeholder="0"
+              />
+            </div>
             <StockSummaryRow
               label="Kembalian"
               value={formatStockCurrency(Math.max(changeAmount, 0))}

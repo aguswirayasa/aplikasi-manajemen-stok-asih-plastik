@@ -60,7 +60,7 @@ export function ProductCard({
 
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#eceae3] pt-3 mt-1">
         <div className="text-[14px]">
-          <span className="text-[#939084]">Total Stok:</span>{" "}
+          <span className="text-[#939084]">Total Stok (pcs):</span>{" "}
           <span className="font-bold text-[#201515]">{totalStock}</span>
         </div>
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">

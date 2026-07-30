@@ -128,7 +128,7 @@ export default async function ProductsPage({
                 <th className="p-4 font-semibold text-[#201515]">Nama Produk</th>
                 <th className="p-4 font-semibold text-[#201515]">Kategori</th>
                 <th className="p-4 font-semibold text-[#201515]">Varian</th>
-                <th className="p-4 font-semibold text-[#201515]">Total Stok</th>
+                <th className="p-4 font-semibold text-[#201515]">Total Stok (pcs)</th>
                 <th className="p-4 font-semibold text-[#201515]">Status</th>
                 <th className="p-4 font-semibold text-[#201515] text-right">Aksi</th>
               </tr>

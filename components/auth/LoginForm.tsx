@@ -13,9 +13,11 @@ export function LoginForm() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage(null);
     setIsLoading(true);
 
     try {
@@ -27,14 +29,14 @@ export function LoginForm() {
       });
 
       if (res?.error) {
-        toast.error("Login gagal. Periksa username dan password.");
+        setErrorMessage(getLoginErrorMessage(res.error));
       } else {
         toast.success("Login berhasil.");
         router.push("/dashboard");
         router.refresh();
       }
     } catch {
-      toast.error("Login gagal. Coba lagi.");
+      setErrorMessage("Login gagal. Silakan coba lagi.");
     } finally {
       setIsLoading(false);
     }
@@ -85,7 +87,10 @@ export function LoginForm() {
               placeholder="Masukkan username"
               required
               value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              onChange={(e) => {
+                setUsername(e.target.value);
+                setErrorMessage(null);
+              }}
               className="w-full rounded-[5px] border border-[#c5c0b1] bg-[#fffefb] px-4 py-3 text-[16px] text-[#201515] placeholder:text-[#939084] outline-none transition-colors focus-visible:border-[#ff4f00] focus-visible:ring-1 focus-visible:ring-[#ff4f00]"
             />
           </div>
@@ -104,7 +109,10 @@ export function LoginForm() {
                 placeholder="********"
                 required
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setErrorMessage(null);
+                }}
                 className="w-full rounded-[5px] border border-[#c5c0b1] bg-[#fffefb] py-3 pr-12 pl-4 text-[16px] text-[#201515] placeholder:text-[#939084] outline-none transition-colors focus-visible:border-[#ff4f00] focus-visible:ring-1 focus-visible:ring-[#ff4f00]"
               />
               <button
@@ -124,6 +132,16 @@ export function LoginForm() {
               </button>
             </div>
           </div>
+
+          {errorMessage && (
+            <div
+              role="alert"
+              aria-live="polite"
+              className="rounded-[5px] border border-[#ff4f00] bg-[#fff7ed] px-4 py-3 text-[14px] font-semibold leading-[1.4] text-[#9a3412]"
+            >
+              {errorMessage}
+            </div>
+          )}
 
           <button
             type="submit"
@@ -149,4 +167,19 @@ export function LoginForm() {
       </div>
     </div>
   );
+}
+
+function getLoginErrorMessage(error: string) {
+  switch (error) {
+    case "Invalid password":
+      return "Password salah. Silakan hubungi admin jika ingin mereset password.";
+    case "User not found":
+      return "Username tidak ditemukan. Silakan periksa kembali username Anda.";
+    case "User is inactive":
+      return "Akun Anda tidak aktif. Silakan hubungi admin.";
+    case "Missing username or password":
+      return "Username dan password wajib diisi.";
+    default:
+      return "Login gagal. Silakan periksa data login Anda atau hubungi admin.";
+  }
 }

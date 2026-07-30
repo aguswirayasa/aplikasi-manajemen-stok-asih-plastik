@@ -112,7 +112,7 @@ export const StockQuantityInput = forwardRef<
 
   return (
     <div>
-      <label className="mb-2 block text-[13px] font-bold text-[#201515] md:sr-only">
+      <label className="mb-2 block text-[13px] font-bold text-[#201515]">
         {label}
       </label>
       <input
@@ -131,7 +131,7 @@ export const StockQuantityInput = forwardRef<
             ? "border-[#ff4f00] text-[#ff4f00]"
             : "border-[#c5c0b1] text-[#201515]"
         }`}
-        placeholder="Qty"
+        placeholder="Jumlah"
       />
       {errorMessage}
     </div>

@@ -174,7 +174,7 @@ export function StockHistoryView({ result }: { result: StockHistoryResult }) {
                   Produk
                 </th>
                 <th className="p-4 text-right text-[13px] font-bold text-[#201515]">
-                  Qty
+                  Qty (pcs)
                 </th>
                 <th className="p-4 text-[13px] font-bold text-[#201515]">
                   User

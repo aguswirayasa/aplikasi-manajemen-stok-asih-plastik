@@ -68,15 +68,12 @@ type NormalizedProductUpdate = {
   variants: NormalizedVariantUpdate[];
 };
 
-export function ProductEditForm({
-  product,
-  categories,
-}: ProductEditFormProps) {
+export function ProductEditForm({ product, categories }: ProductEditFormProps) {
   const router = useRouter();
   const initialDraft = useMemo(() => createDraft(product), [product]);
   const [draft, setDraft] = useState<ProductDraft>(initialDraft);
   const [savedSnapshot, setSavedSnapshot] = useState(() =>
-    createSnapshot(initialDraft)
+    createSnapshot(initialDraft),
   );
   const [saving, setSaving] = useState(false);
   const [categoryOptions, setCategoryOptions] = useState(categories);
@@ -101,19 +98,19 @@ export function ProductEditForm({
 
   const updateVariant = (
     variantId: string,
-    patch: Partial<Omit<VariantDraft, "id" | "sku" | "values">>
+    patch: Partial<Omit<VariantDraft, "id" | "sku" | "values">>,
   ) => {
     setDraft((current) => ({
       ...current,
       variants: current.variants.map((variant) =>
-        variant.id === variantId ? { ...variant, ...patch } : variant
+        variant.id === variantId ? { ...variant, ...patch } : variant,
       ),
     }));
   };
 
   const normalizeVariantNumber = (
     variantId: string,
-    field: "price" | "stock" | "minStock"
+    field: "price" | "stock" | "minStock",
   ) => {
     setDraft((current) => ({
       ...current,
@@ -128,7 +125,8 @@ export function ProductEditForm({
           return variant;
         }
 
-        const parsed = field === "price" ? Number(value) : Number.parseInt(value, 10);
+        const parsed =
+          field === "price" ? Number(value) : Number.parseInt(value, 10);
 
         if (!Number.isFinite(parsed) || parsed < 0) {
           return variant;
@@ -171,7 +169,7 @@ export function ProductEditForm({
       toast.error(
         error instanceof Error
           ? error.message
-          : "Gagal menyimpan perubahan produk."
+          : "Gagal menyimpan perubahan produk.",
       );
     } finally {
       setSaving(false);
@@ -184,7 +182,7 @@ export function ProductEditForm({
 
   const handleCategoryCreated = (category: Category) => {
     setCategoryOptions((current) =>
-      [...current, category].sort((a, b) => a.name.localeCompare(b.name))
+      [...current, category].sort((a, b) => a.name.localeCompare(b.name)),
     );
     setDraft((current) => ({
       ...current,
@@ -290,9 +288,9 @@ export function ProductEditForm({
                 <th className="p-4 font-semibold text-[#201515]">
                   SKU / Variasi
                 </th>
-                <th className="p-4 font-semibold text-[#201515]">Harga</th>
-                <th className="p-4 font-semibold text-[#201515]">Stok Akhir</th>
-                <th className="p-4 font-semibold text-[#201515]">Min. Stok</th>
+                <th className="p-4 font-semibold text-[#201515]">Harga (Rp)</th>
+                <th className="p-4 font-semibold text-[#201515]">Stok Akhir (pcs)</th>
+                <th className="p-4 font-semibold text-[#201515]">Min. Stok (pcs)</th>
                 <th className="p-4 text-center font-semibold text-[#201515]">
                   Aktif
                 </th>
@@ -317,7 +315,9 @@ export function ProductEditForm({
                       ariaLabel={`Harga ${variant.sku}`}
                       value={variant.price}
                       inputMode="decimal"
-                      onChange={(value) => updateVariant(variant.id, { price: value })}
+                      onChange={(value) =>
+                        updateVariant(variant.id, { price: value })
+                      }
                       onBlur={() => normalizeVariantNumber(variant.id, "price")}
                     />
                   </td>
@@ -325,7 +325,9 @@ export function ProductEditForm({
                     <NumericInput
                       ariaLabel={`Stok akhir ${variant.sku}`}
                       value={variant.stock}
-                      onChange={(value) => updateVariant(variant.id, { stock: value })}
+                      onChange={(value) =>
+                        updateVariant(variant.id, { stock: value })
+                      }
                       onBlur={() => normalizeVariantNumber(variant.id, "stock")}
                     />
                   </td>
@@ -336,7 +338,9 @@ export function ProductEditForm({
                       onChange={(value) =>
                         updateVariant(variant.id, { minStock: value })
                       }
-                      onBlur={() => normalizeVariantNumber(variant.id, "minStock")}
+                      onBlur={() =>
+                        normalizeVariantNumber(variant.id, "minStock")
+                      }
                     />
                   </td>
                   <td className="p-4">
@@ -379,31 +383,37 @@ export function ProductEditForm({
               </div>
 
               <div className="grid gap-4 sm:grid-cols-3">
-                <Field label="Harga">
+                <Field label="Harga (Rp)">
                   <NumericInput
                     ariaLabel={`Harga ${variant.sku}`}
                     value={variant.price}
                     inputMode="decimal"
-                    onChange={(value) => updateVariant(variant.id, { price: value })}
+                    onChange={(value) =>
+                      updateVariant(variant.id, { price: value })
+                    }
                     onBlur={() => normalizeVariantNumber(variant.id, "price")}
                   />
                 </Field>
-                <Field label="Stok Akhir">
+                <Field label="Stok Akhir (pcs)">
                   <NumericInput
                     ariaLabel={`Stok akhir ${variant.sku}`}
                     value={variant.stock}
-                    onChange={(value) => updateVariant(variant.id, { stock: value })}
+                    onChange={(value) =>
+                      updateVariant(variant.id, { stock: value })
+                    }
                     onBlur={() => normalizeVariantNumber(variant.id, "stock")}
                   />
                 </Field>
-                <Field label="Min. Stok">
+                <Field label="Min. Stok (pcs)">
                   <NumericInput
                     ariaLabel={`Minimum stok ${variant.sku}`}
                     value={variant.minStock}
                     onChange={(value) =>
                       updateVariant(variant.id, { minStock: value })
                     }
-                    onBlur={() => normalizeVariantNumber(variant.id, "minStock")}
+                    onBlur={() =>
+                      normalizeVariantNumber(variant.id, "minStock")
+                    }
                   />
                 </Field>
               </div>
@@ -443,13 +453,7 @@ export function ProductEditForm({
   );
 }
 
-function BackAction({
-  dirty,
-  onBack,
-}: {
-  dirty: boolean;
-  onBack: () => void;
-}) {
+function BackAction({ dirty, onBack }: { dirty: boolean; onBack: () => void }) {
   const button = (onClick: () => void) => (
     <button
       type="button"
@@ -599,7 +603,6 @@ function validateDraft(draft: ProductDraft) {
     if (!isValidNonNegativeInteger(variant.minStock)) {
       return `Minimum stok ${variant.sku} harus berupa angka bulat 0 atau lebih.`;
     }
-
   }
 
   return null;
@@ -622,10 +625,10 @@ function normalizeDraft(draft: ProductDraft): NormalizedProductUpdate {
 
 function draftFromNormalized(
   normalized: NormalizedProductUpdate,
-  draft: ProductDraft
+  draft: ProductDraft,
 ): ProductDraft {
   const normalizedVariants = new Map(
-    normalized.variants.map((variant) => [variant.id, variant])
+    normalized.variants.map((variant) => [variant.id, variant]),
   );
 
   return {

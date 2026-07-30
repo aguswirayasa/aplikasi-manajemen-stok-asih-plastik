@@ -39,13 +39,13 @@ export function StockInLine({
 
       <StockMetric
         label="Stok saat ini"
-        value={`${line.variant.stock}`}
+        value={`${line.variant.stock} pcs`}
         prominent
       />
 
       <StockQuantityInput
         ref={quantityRef}
-        label="Jumlah masuk"
+        label="Jumlah masuk (pcs)"
         value={line.quantity}
         onChange={(quantity) => onQuantityChange(line.lineId, quantity)}
         onEnter={onQuantityEnter}

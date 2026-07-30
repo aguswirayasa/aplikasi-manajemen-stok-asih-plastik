@@ -8,9 +8,13 @@ export function DashboardHeader({ displayName }: { displayName: string }) {
         <h1 className="mt-1 text-[30px] font-semibold leading-[1] text-[#201515] md:text-[36px]">
           Dashboard Stok
         </h1>
-        <p className="mt-2 max-w-[640px] text-[15px] leading-[1.25] text-[#36342e]">
-          Selamat datang,{" "}
-          <span className="font-bold text-[#201515]">{displayName}</span>.
+      </div>
+      <div className="text-left md:text-right">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.5px] text-[#939084]">
+          Pengguna
+        </p>
+        <p className="mt-1 text-[15px] font-bold text-[#201515]">
+          {displayName}
         </p>
       </div>
     </header>

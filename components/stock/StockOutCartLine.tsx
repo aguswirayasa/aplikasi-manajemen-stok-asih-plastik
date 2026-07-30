@@ -8,10 +8,7 @@ import {
   StockQuantityInput,
   StockRemoveButton,
 } from "@/components/stock/StockLineParts";
-import {
-  formatStockCurrency,
-  getStockVariantPrice,
-} from "@/lib/stock-format";
+import { formatStockCurrency, getStockVariantPrice } from "@/lib/stock-format";
 import type { StockLine } from "@/types/stock";
 
 export function StockOutCartLine({
@@ -57,17 +54,17 @@ export function StockOutCartLine({
       />
 
       <div className="grid grid-cols-2 gap-3 md:block">
-        <StockMetric label="Harga" value={formatStockCurrency(price)} />
+        <StockMetric label="Harga satuan" value={formatStockCurrency(price)} />
         <StockMetric
-          label="Sisa stok"
-          value={`${remaining}`}
+          label="Stok tersisa"
+          value={`${remaining} pcs`}
           warn={isOverStock || line.variant.stock <= line.variant.minStock}
         />
       </div>
 
       <StockQuantityInput
         ref={quantityRef}
-        label="Qty"
+        label="Qty (jumlah pcs)"
         value={line.quantity}
         invalid={isOverStock}
         onChange={(quantity) => onQuantityChange(line.lineId, quantity)}
@@ -78,7 +75,7 @@ export function StockOutCartLine({
           isOverStock ? (
             <p className="mt-2 flex items-center gap-1.5 text-[12px] font-semibold text-[#ff4f00]">
               <AlertCircle className="h-3.5 w-3.5" />
-              Melebihi stok
+              Jumlah melebihi stok tersedia
             </p>
           ) : null
         }
@@ -86,7 +83,7 @@ export function StockOutCartLine({
 
       <div className="rounded-[5px] border border-[#c5c0b1] bg-[#fffefb] p-3">
         <p className="text-[11px] font-semibold uppercase tracking-[0.5px] text-[#939084]">
-          Subtotal
+          Total harga
         </p>
         <p className="mt-1 text-[15px] font-bold text-[#201515]">
           {formatStockCurrency(subtotal)}

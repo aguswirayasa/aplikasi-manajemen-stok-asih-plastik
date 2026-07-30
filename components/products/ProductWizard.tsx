@@ -791,7 +791,7 @@ export function ProductWizard({
               </p>
             </div>
             <div className="grid gap-4 sm:grid-cols-3">
-              <Field label="Harga">
+              <Field label="Harga (Rp)">
                 <NumericInput
                   ariaLabel="Harga produk"
                   value={singleVariantDraft.price}
@@ -800,7 +800,7 @@ export function ProductWizard({
                   onBlur={() => normalizeSingleVariantNumber("price")}
                 />
               </Field>
-              <Field label="Stok Awal">
+              <Field label="Stok Awal (pcs)">
                 <NumericInput
                   ariaLabel="Stok awal produk"
                   value={singleVariantDraft.stock}
@@ -808,7 +808,7 @@ export function ProductWizard({
                   onBlur={() => normalizeSingleVariantNumber("stock")}
                 />
               </Field>
-              <Field label="Min. Stok">
+              <Field label="Min. Stok (pcs)">
                 <NumericInput
                   ariaLabel="Minimal stok produk"
                   value={singleVariantDraft.minStock}
@@ -872,7 +872,7 @@ export function ProductWizard({
                     </p>
 
                     <div className="mt-4 grid gap-4 sm:grid-cols-3">
-                      <Field label="Harga">
+                      <Field label="Harga (Rp)">
                         <NumericInput
                           ariaLabel={`Harga ${formatCombinationName(combination, valueMap)}`}
                           value={draft.price}
@@ -885,7 +885,7 @@ export function ProductWizard({
                           }
                         />
                       </Field>
-                      <Field label="Stok Awal">
+                      <Field label="Stok Awal (pcs)">
                         <NumericInput
                           ariaLabel={`Stok awal ${formatCombinationName(
                             combination,
@@ -900,7 +900,7 @@ export function ProductWizard({
                           }
                         />
                       </Field>
-                      <Field label="Min. Stok">
+                      <Field label="Min. Stok (pcs)">
                         <NumericInput
                           ariaLabel={`Minimal stok ${formatCombinationName(
                             combination,
@@ -1104,7 +1104,7 @@ function BulkVariantApplyPanel({
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <Field label="Harga">
+            <Field label="Harga (Rp)">
               <NumericInput
                 ariaLabel="Harga massal"
                 value={bulkDraft.price}
@@ -1114,7 +1114,7 @@ function BulkVariantApplyPanel({
                 onBlur={() => onDraftBlur("price")}
               />
             </Field>
-            <Field label="Stok Awal">
+            <Field label="Stok Awal (pcs)">
               <NumericInput
                 ariaLabel="Stok awal massal"
                 value={bulkDraft.stock}
@@ -1123,7 +1123,7 @@ function BulkVariantApplyPanel({
                 onBlur={() => onDraftBlur("stock")}
               />
             </Field>
-            <Field label="Min. Stok">
+            <Field label="Min. Stok (pcs)">
               <NumericInput
                 ariaLabel="Minimal stok massal"
                 value={bulkDraft.minStock}
@@ -1315,9 +1315,9 @@ function ProductReviewStep({
                 </div>
               )}
               <div className="grid grid-cols-3 gap-2">
-                <ReviewMetric label="Harga" value={singleVariantDraft?.price ?? "0"} />
-                <ReviewMetric label="Stok Awal" value={singleVariantDraft?.stock ?? "0"} />
-                <ReviewMetric label="Min. Stok" value={singleVariantDraft?.minStock ?? "0"} />
+                <ReviewMetric label="Harga (Rp)" value={singleVariantDraft?.price ?? "0"} />
+                <ReviewMetric label="Stok Awal (pcs)" value={`${singleVariantDraft?.stock ?? "0"} pcs`} />
+                <ReviewMetric label="Min. Stok (pcs)" value={`${singleVariantDraft?.minStock ?? "0"} pcs`} />
               </div>
             </article>
           ) : (
@@ -1355,9 +1355,9 @@ function ProductReviewStep({
                   )}
 
                   <div className="mt-4 grid grid-cols-3 gap-2">
-                    <ReviewMetric label="Harga" value={item.draft.price} />
-                    <ReviewMetric label="Stok Awal" value={item.draft.stock} />
-                    <ReviewMetric label="Min. Stok" value={item.draft.minStock} />
+                    <ReviewMetric label="Harga (Rp)" value={item.draft.price} />
+                    <ReviewMetric label="Stok Awal (pcs)" value={`${item.draft.stock} pcs`} />
+                    <ReviewMetric label="Min. Stok (pcs)" value={`${item.draft.minStock} pcs`} />
                   </div>
                 </article>
               );

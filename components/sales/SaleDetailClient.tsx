@@ -53,9 +53,18 @@ export function SaleDetailClient({ sale }: { sale: SaleReceiptData }) {
       </header>
 
       <section className="grid gap-3 sm:grid-cols-3">
-        <InfoCard label="Waktu" value={dateFormatter.format(new Date(sale.createdAt))} />
-        <InfoCard label="Kasir" value={sale.cashier.name || sale.cashier.username} />
-        <InfoCard label="Total" value={formatStockCurrency(Number(sale.totalAmount))} />
+        <InfoCard
+          label="Waktu"
+          value={dateFormatter.format(new Date(sale.createdAt))}
+        />
+        <InfoCard
+          label="Kasir"
+          value={sale.cashier.name || sale.cashier.username}
+        />
+        <InfoCard
+          label="Total"
+          value={formatStockCurrency(Number(sale.totalAmount))}
+        />
       </section>
 
       <section className="overflow-hidden rounded-[8px] border border-[#c5c0b1] bg-[#fffefb]">
@@ -74,11 +83,9 @@ export function SaleDetailClient({ sale }: { sale: SaleReceiptData }) {
                 <p className="font-bold text-[#201515]">
                   {item.variant.product.name}
                 </p>
-                <p className="text-[13px] text-[#939084]">
-                  {item.variant.sku}
-                </p>
+                <p className="text-[13px] text-[#939084]">{item.variant.sku}</p>
               </div>
-              <Metric label="Qty" value={`${item.quantity}`} />
+              <Metric label="Qty" value={`${item.quantity} pcs`} />
               <Metric
                 label="Harga"
                 value={formatStockCurrency(Number(item.unitPrice))}
@@ -93,9 +100,18 @@ export function SaleDetailClient({ sale }: { sale: SaleReceiptData }) {
       </section>
 
       <section className="grid gap-3 sm:grid-cols-3">
-        <InfoCard label="Total" value={formatStockCurrency(Number(sale.totalAmount))} />
-        <InfoCard label="Bayar" value={formatStockCurrency(Number(sale.paidAmount))} />
-        <InfoCard label="Kembali" value={formatStockCurrency(Number(sale.changeAmount))} />
+        <InfoCard
+          label="Total"
+          value={formatStockCurrency(Number(sale.totalAmount))}
+        />
+        <InfoCard
+          label="Bayar"
+          value={formatStockCurrency(Number(sale.paidAmount))}
+        />
+        <InfoCard
+          label="Kembali"
+          value={formatStockCurrency(Number(sale.changeAmount))}
+        />
       </section>
 
       <div className="fixed -left-[10000px] top-0">

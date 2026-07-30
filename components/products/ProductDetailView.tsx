@@ -125,8 +125,8 @@ export function ProductDetailView({
 
         <section className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <SummaryCard
-            label="Total Stok"
-            value={summary.totalStock.toString()}
+            label="Total Stok (pcs)"
+            value={`${summary.totalStock} pcs`}
           />
           <SummaryCard
             label="Jumlah Varian"
@@ -143,7 +143,7 @@ export function ProductDetailView({
               />
             </div>
           </div>
-          <SummaryCard label="Minimum Stok" value={minimumSummary} />
+          <SummaryCard label="Minimum Stok (pcs)" value={minimumSummary} />
         </section>
 
         {product.description && (
@@ -198,9 +198,9 @@ function VariantSection({ variants }: { variants: ProductDetailVariant[] }) {
             <tr className="border-b border-[#c5c0b1]">
               <th className="p-4 font-semibold text-[#201515]">SKU</th>
               <th className="p-4 font-semibold text-[#201515]">Variasi</th>
-              <th className="p-4 font-semibold text-[#201515]">Harga</th>
-              <th className="p-4 font-semibold text-[#201515]">Stok</th>
-              <th className="p-4 font-semibold text-[#201515]">Min.</th>
+              <th className="p-4 font-semibold text-[#201515]">Harga (Rp)</th>
+              <th className="p-4 font-semibold text-[#201515]">Stok (pcs)</th>
+              <th className="p-4 font-semibold text-[#201515]">Min. Stok (pcs)</th>
               <th className="p-4 font-semibold text-[#201515]">Status</th>
             </tr>
           </thead>
@@ -218,10 +218,10 @@ function VariantSection({ variants }: { variants: ProductDetailVariant[] }) {
                   {currencyFormatter.format(variant.price)}
                 </td>
                 <td className="p-4 tabular-nums font-bold text-[#201515]">
-                  {variant.stock}
+                  {variant.stock} pcs
                 </td>
                 <td className="p-4 tabular-nums text-[#36342e]">
-                  {variant.minStock}
+                  {variant.minStock} pcs
                 </td>
                 <td className="p-4">
                   <VariantStatus
@@ -256,11 +256,14 @@ function VariantSection({ variants }: { variants: ProductDetailVariant[] }) {
             </div>
             <div className="space-y-2">
               <Metric
-                label="Harga"
+                label="Harga (Rp)"
                 value={currencyFormatter.format(variant.price)}
               />
-              <Metric label="Stok" value={variant.stock.toString()} />
-              <Metric label="Min." value={variant.minStock.toString()} />
+              <Metric label="Stok (pcs)" value={`${variant.stock} pcs`} />
+              <Metric
+                label="Min. Stok (pcs)"
+                value={`${variant.minStock} pcs`}
+              />
             </div>
           </article>
         ))}
