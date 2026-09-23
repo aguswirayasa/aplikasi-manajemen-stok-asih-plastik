@@ -50,7 +50,13 @@ function summarizeProducts(group: StockTransactionGroup) {
     : first.productName;
 }
 
-export function StockHistoryView({ result }: { result: StockHistoryResult }) {
+export function StockHistoryView({
+  result,
+  isAdmin,
+}: {
+  result: StockHistoryResult;
+  isAdmin: boolean;
+}) {
   const { filter, history, pagination } = result;
   const reportHref = `/stock/history/report${buildStockHistoryQuery(filter)}`;
 
@@ -72,13 +78,15 @@ export function StockHistoryView({ result }: { result: StockHistoryResult }) {
             </p>
           </div>
         </div>
-        <Link
-          href={reportHref}
-          className="inline-flex min-h-10 items-center justify-center gap-2 rounded-[5px] border border-[#ff4f00] bg-[#ff4f00] px-4 text-[13px] font-bold text-[#fffefb] hover:bg-[#e64600]"
-        >
-          <Download className="h-4 w-4" />
-          Download Laporan
-        </Link>
+        {isAdmin ? (
+          <Link
+            href={reportHref}
+            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-[5px] border border-[#ff4f00] bg-[#ff4f00] px-4 text-[13px] font-bold text-[#fffefb] hover:bg-[#e64600]"
+          >
+            <Download className="h-4 w-4" />
+            Download Laporan
+          </Link>
+        ) : null}
       </header>
 
       <section className="rounded-[8px] border border-[#c5c0b1] bg-[#fffefb] p-4">

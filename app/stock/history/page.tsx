@@ -12,10 +12,10 @@ export default async function StockHistoryPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  await requirePageAuth();
+  const user = await requirePageAuth();
 
   const filter = parseStockHistoryFilter(await searchParams);
   const result = await getStockHistory(filter);
 
-  return <StockHistoryView result={result} />;
+  return <StockHistoryView result={result} isAdmin={user.role === "ADMIN"} />;
 }
