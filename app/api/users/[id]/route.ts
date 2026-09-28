@@ -17,7 +17,7 @@ export const PUT = withErrorHandler(async (
   const currentUser = await requireAdmin();
   const { id } = await params;
   const body = await req.json();
-  const { name, role, password, isActive } = body;
+  const { username, name, role, password, isActive } = body;
 
   if (typeof name !== "string" || !isUserRole(role)) {
     throw new ApiError("Nama dan role wajib diisi.", 400);
@@ -25,6 +25,10 @@ export const PUT = withErrorHandler(async (
 
   if (isActive !== undefined && typeof isActive !== "boolean") {
     throw new ApiError("Status aktif user tidak valid.", 400);
+  }
+
+  if (username !== undefined && (typeof username !== "string" || !username.trim())) {
+    throw new ApiError("Username wajib diisi.", 400);
   }
 
   if (id === currentUser.id && isActive === false) {
@@ -35,6 +39,12 @@ export const PUT = withErrorHandler(async (
 
   if (!existingUser) {
     throw new ApiError("User tidak ditemukan.", 404);
+  }
+
+  const nextUsername = typeof username === "string" ? username.trim() : undefined;
+  if (nextUsername && nextUsername !== existingUser.username) {
+    const usernameOwner = await prisma.user.findUnique({ where: { username: nextUsername } });
+    if (usernameOwner && usernameOwner.id !== id) throw new ApiError("Username sudah digunakan.", 409);
   }
 
   const nextIsActive = isActive ?? existingUser.isActive;
@@ -58,29 +68,42 @@ export const PUT = withErrorHandler(async (
     name: string;
     role: Role;
     isActive: boolean;
+    username?: string;
     password?: string;
   } = {
     name,
     role: nextRole,
     isActive: nextIsActive,
   };
-  
+
+  if (nextUsername !== undefined) dataToUpdate.username = nextUsername;
   if (typeof password === "string" && password.length > 0) {
     dataToUpdate.password = await bcrypt.hash(password, 10);
   }
 
-  const user = await prisma.user.update({
-    where: { id },
-    data: dataToUpdate,
-    select: {
-      id: true,
-      username: true,
-      name: true,
-      role: true,
-      isActive: true,
-      createdAt: true,
+  let user;
+  try {
+    user = await prisma.user.update({
+      where: { id },
+      data: dataToUpdate,
+      select: {
+        id: true,
+        username: true,
+        name: true,
+        role: true,
+        isActive: true,
+        createdAt: true,
+      },
+    });
+  } catch (error) {
+    if (
+      typeof error === "object" && error !== null &&
+      "code" in error && error.code === "P2002" && nextUsername !== undefined
+    ) {
+      throw new ApiError("Username sudah digunakan.", 409);
     }
-  });
+    throw error;
+  }
 
   return apiResponse(user);
 });

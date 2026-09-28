@@ -234,7 +234,6 @@ export function UserManagementClient({
                 <input
                   type="text"
                   required
-                  disabled={!!editingId}
                   value={form.username}
                   onChange={(event) =>
                     setForm((current) => ({
@@ -242,7 +241,7 @@ export function UserManagementClient({
                       username: event.target.value,
                     }))
                   }
-                  className="min-h-11 w-full rounded-[5px] border border-[#c5c0b1] bg-[#fffefb] px-3 text-[15px] text-[#201515] outline-none focus:border-[#ff4f00] disabled:bg-[#eceae3]"
+                  className="min-h-11 w-full rounded-[5px] border border-[#c5c0b1] bg-[#fffefb] px-3 text-[15px] text-[#201515] outline-none focus:border-[#ff4f00]"
                 />
               </Field>
 
