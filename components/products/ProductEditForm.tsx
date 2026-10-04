@@ -125,8 +125,11 @@ export function ProductEditForm({ product, categories }: ProductEditFormProps) {
           return variant;
         }
 
-        const parsed =
-          field === "price" ? Number(value) : Number.parseInt(value, 10);
+        const parsed = Number(value);
+
+        if (field !== "price" && !isValidNonNegativeInteger(value)) {
+          return variant;
+        }
 
         if (!Number.isFinite(parsed) || parsed < 0) {
           return variant;
@@ -505,8 +508,11 @@ function NumericInput({
 }) {
   return (
     <input
-      type="text"
-      inputMode={inputMode}
+      type={inputMode === "decimal" ? "text" : "number"}
+      inputMode={inputMode === "decimal" ? "decimal" : undefined}
+      min={inputMode === "decimal" ? undefined : 0}
+      max={inputMode === "decimal" ? undefined : 2147483647}
+      step={inputMode === "decimal" ? undefined : 1}
       aria-label={ariaLabel}
       value={value}
       onFocus={(event) => event.currentTarget.select()}
@@ -616,8 +622,8 @@ function normalizeDraft(draft: ProductDraft): NormalizedProductUpdate {
     variants: draft.variants.map((variant) => ({
       id: variant.id,
       price: Number(variant.price),
-      stock: Number.parseInt(variant.stock, 10),
-      minStock: Number.parseInt(variant.minStock, 10),
+      stock: Number(variant.stock),
+      minStock: Number(variant.minStock),
       isActive: variant.isActive,
     })),
   };
@@ -659,7 +665,8 @@ function isValidNonNegativeInteger(value: string) {
   }
 
   const parsed = Number(value);
-  return Number.isInteger(parsed) && parsed >= 0;
+  // Batas Int MariaDB mencegah nilai melampaui kapasitas kolom stok.
+  return Number.isInteger(parsed) && parsed >= 0 && parsed <= 2147483647;
 }
 
 function isValidNonNegativeNumber(value: string) {

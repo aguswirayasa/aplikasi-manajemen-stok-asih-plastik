@@ -190,6 +190,16 @@ export function ProductWizard({
         toast.error(validationMessage);
         return;
       }
+    } else {
+      const validationMessage = validateVariantDrafts(
+        [{ key: "single", valueIds: [] }],
+        { single: singleVariantDraft },
+      );
+
+      if (validationMessage) {
+        toast.error(validationMessage);
+        return;
+      }
     }
 
     setLoading(true);
@@ -206,8 +216,8 @@ export function ProductWizard({
                 {
                   valueIds: [],
                   price: Number(singleVariantDraft.price),
-                  stock: Number.parseInt(singleVariantDraft.stock, 10),
-                  minStock: Number.parseInt(singleVariantDraft.minStock, 10),
+                  stock: Number(singleVariantDraft.stock),
+                  minStock: Number(singleVariantDraft.minStock),
                 },
               ],
             }
@@ -223,8 +233,8 @@ export function ProductWizard({
                 return {
                   valueIds: combination.valueIds,
                   price: Number(draft.price),
-                  stock: Number.parseInt(draft.stock, 10),
-                  minStock: Number.parseInt(draft.minStock, 10),
+                  stock: Number(draft.stock),
+                  minStock: Number(draft.minStock),
                 };
               }),
             };
@@ -401,8 +411,11 @@ export function ProductWizard({
         return current;
       }
 
-      const parsed =
-        field === "price" ? Number(value) : Number.parseInt(value, 10);
+      const parsed = Number(value);
+
+      if (field !== "price" && !isValidNonNegativeInteger(value)) {
+        return current;
+      }
 
       if (!Number.isFinite(parsed) || parsed < 0) {
         return current;
@@ -435,8 +448,11 @@ export function ProductWizard({
         return current;
       }
 
-      const parsed =
-        field === "price" ? Number(value) : Number.parseInt(value, 10);
+      const parsed = Number(value);
+
+      if (field !== "price" && !isValidNonNegativeInteger(value)) {
+        return current;
+      }
 
       if (!Number.isFinite(parsed) || parsed < 0) {
         return current;
@@ -464,8 +480,11 @@ export function ProductWizard({
         return current;
       }
 
-      const parsed =
-        field === "price" ? Number(value) : Number.parseInt(value, 10);
+      const parsed = Number(value);
+
+      if (field !== "price" && !isValidNonNegativeInteger(value)) {
+        return current;
+      }
 
       if (!Number.isFinite(parsed) || parsed < 0) {
         return current;
@@ -1012,8 +1031,11 @@ function NumericInput({
 }) {
   return (
     <input
-      type="text"
-      inputMode={inputMode}
+      type={inputMode === "decimal" ? "text" : "number"}
+      inputMode={inputMode === "decimal" ? "decimal" : undefined}
+      min={inputMode === "decimal" ? undefined : 0}
+      max={inputMode === "decimal" ? undefined : 2147483647}
+      step={inputMode === "decimal" ? undefined : 1}
       aria-label={ariaLabel}
       value={value}
       placeholder={placeholder}
@@ -1488,7 +1510,7 @@ function buildBulkVariantPatch(bulkDraft: VariantDraft): {
       };
     }
 
-    patch.stock = Number.parseInt(bulkDraft.stock, 10).toString();
+    patch.stock = Number(bulkDraft.stock).toString();
   }
 
   if (bulkDraft.minStock.trim().length > 0) {
@@ -1499,7 +1521,7 @@ function buildBulkVariantPatch(bulkDraft: VariantDraft): {
       };
     }
 
-    patch.minStock = Number.parseInt(bulkDraft.minStock, 10).toString();
+    patch.minStock = Number(bulkDraft.minStock).toString();
   }
 
   return { patch, error: null };
@@ -1568,7 +1590,8 @@ function isValidNonNegativeInteger(value: string) {
   }
 
   const parsed = Number(value);
-  return Number.isInteger(parsed) && parsed >= 0;
+  // Batas Int MariaDB mencegah nilai melampaui kapasitas kolom stok.
+  return Number.isInteger(parsed) && parsed >= 0 && parsed <= 2147483647;
 }
 
 function isValidNonNegativeNumber(value: string) {
