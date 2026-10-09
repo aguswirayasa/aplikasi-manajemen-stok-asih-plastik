@@ -1,13 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import {
-  CartesianGrid,
-  Line,
-  LineChart,
-  XAxis,
-  YAxis,
-} from "recharts";
+import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
 import { Button } from "@/components/ui/button";
 import {
   ChartContainer,
@@ -67,7 +61,9 @@ export function SalesPerformancePanel({
   performance: SalesPerformance | null;
   error: string | null;
 }) {
-  const [range, setRange] = useState(() => defaultDateRange(initialPerformance));
+  const [range, setRange] = useState(() =>
+    defaultDateRange(initialPerformance),
+  );
   const [performance, setPerformance] = useState(initialPerformance);
   const [fetchError, setFetchError] = useState(initialError);
   const [rangeError, setRangeError] = useState<string | null>(null);
@@ -84,7 +80,8 @@ export function SalesPerformancePanel({
     }
 
     const days =
-      (Date.parse(`${range.to}T00:00:00Z`) - Date.parse(`${range.from}T00:00:00Z`)) /
+      (Date.parse(`${range.to}T00:00:00Z`) -
+        Date.parse(`${range.from}T00:00:00Z`)) /
         DAY_MILLISECONDS +
       1;
     if (days > 366) {
@@ -106,7 +103,7 @@ export function SalesPerformancePanel({
       setFetchError(
         caught instanceof Error
           ? caught.message
-          : "Gagal memuat performa penjualan."
+          : "Gagal memuat performa penjualan.",
       );
     } finally {
       setIsLoading(false);
@@ -123,7 +120,8 @@ export function SalesPerformancePanel({
         </h2>
         {performance && (
           <p className="text-[13px] text-[#939084]">
-            Omzet harian {performance.period.fromInput} sampai {performance.period.toInput}.
+            Omzet harian {performance.period.fromInput} sampai{" "}
+            {performance.period.toInput}.
           </p>
         )}
       </div>
@@ -131,7 +129,10 @@ export function SalesPerformancePanel({
       <div className="flex flex-col gap-4 p-4">
         <form className="flex flex-wrap items-end gap-3" onSubmit={showRange}>
           <div className="grid min-w-40 flex-1 gap-1.5">
-            <label className="text-[13px] font-semibold text-[#514d40]" htmlFor="sales-from">
+            <label
+              className="text-[13px] font-semibold text-[#514d40]"
+              htmlFor="sales-from"
+            >
               Tanggal awal
             </label>
             <Input
@@ -140,12 +141,17 @@ export function SalesPerformancePanel({
               max={maxDate}
               value={range.from}
               disabled={isLoading}
-              onChange={(event) => setRange({ ...range, from: event.target.value })}
+              onChange={(event) =>
+                setRange({ ...range, from: event.target.value })
+              }
               required
             />
           </div>
           <div className="grid min-w-40 flex-1 gap-1.5">
-            <label className="text-[13px] font-semibold text-[#514d40]" htmlFor="sales-to">
+            <label
+              className="text-[13px] font-semibold text-[#514d40]"
+              htmlFor="sales-to"
+            >
               Tanggal akhir
             </label>
             <Input
@@ -154,11 +160,17 @@ export function SalesPerformancePanel({
               max={maxDate}
               value={range.to}
               disabled={isLoading}
-              onChange={(event) => setRange({ ...range, to: event.target.value })}
+              onChange={(event) =>
+                setRange({ ...range, to: event.target.value })
+              }
               required
             />
           </div>
-          <Button className="min-w-28" type="submit" disabled={isLoading}>
+          <Button
+            className="min-w-28 bg-[#ff4f00]"
+            type="submit"
+            disabled={isLoading}
+          >
             {isLoading ? "Memuat…" : fetchError ? "Coba lagi" : "Tampilkan"}
           </Button>
           <p className="w-full text-[12px] text-[#777568]">
@@ -192,15 +204,26 @@ export function SalesPerformancePanel({
                 height={40}
                 minTickGap={24}
                 tickFormatter={(date: string) => date.slice(5)}
-                label={{ value: "Tanggal", position: "insideBottom", offset: 0 }}
+                label={{
+                  value: "Tanggal",
+                  position: "insideBottom",
+                  offset: 0,
+                }}
               />
               <YAxis
                 width={104}
                 tickLine={false}
                 axisLine={false}
                 tickMargin={8}
-                tickFormatter={(value: number) => `Rp ${compactAxisCurrency.format(value)}`}
-                label={{ value: "Omzet (Rp)", angle: -90, position: "insideLeft", offset: 10 }}
+                tickFormatter={(value: number) =>
+                  `Rp ${compactAxisCurrency.format(value)}`
+                }
+                label={{
+                  value: "Omzet (Rp)",
+                  angle: -90,
+                  position: "insideLeft",
+                  offset: 10,
+                }}
               />
               <ChartTooltip
                 cursor={{ stroke: "#c5c0b1", strokeDasharray: "3 4" }}
@@ -225,13 +248,20 @@ export function SalesPerformancePanel({
                 strokeWidth={3}
                 dot={false}
                 isAnimationActive={false}
-                activeDot={{ r: 6, fill: "#201515", stroke: "#fffefb", strokeWidth: 2 }}
+                activeDot={{
+                  r: 6,
+                  fill: "#201515",
+                  stroke: "#fffefb",
+                  strokeWidth: 2,
+                }}
               />
             </LineChart>
           </ChartContainer>
         ) : (
           <p className="text-[14px] text-[#514d40]" aria-live="polite">
-            {performance ? "Data harian tidak tersedia." : "Grafik penjualan belum tersedia."}
+            {performance
+              ? "Data harian tidak tersedia."
+              : "Grafik penjualan belum tersedia."}
           </p>
         )}
       </div>
