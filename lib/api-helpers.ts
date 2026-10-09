@@ -40,15 +40,16 @@ export function withErrorHandler<TArgs extends unknown[]>(
     try {
       return await handler(...args);
     } catch (error: unknown) {
-      console.error("API Error:", error);
       if (error instanceof ApiError) {
         return apiError(error.message, error.status);
       }
 
-      return apiError(
-        error instanceof Error ? error.message : "Internal Server Error",
-        500
-      );
+      if (error instanceof SyntaxError) {
+        return apiError("Permintaan tidak valid.", 400);
+      }
+
+      console.error("API Error: Internal Server Error");
+      return apiError("Internal Server Error", 500);
     }
   };
 }
@@ -60,8 +61,11 @@ export async function requireAuth() {
     throw new ApiError("Unauthorized", 401);
   }
 
-  if (session.user.isActive === false) {
-    throw new ApiError("User is inactive", 403);
+  if (
+    session.user.isActive !== true ||
+    !Number.isInteger(session.user.sessionVersion)
+  ) {
+    throw new ApiError("Unauthorized", 401);
   }
   
   return session.user;

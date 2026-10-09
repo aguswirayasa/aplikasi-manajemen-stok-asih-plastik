@@ -43,35 +43,41 @@ export function useVariationTypes() {
   };
 
   const handleTypeRename = async (id: string, name: string) => {
-    const res = await fetch(`/api/variations/types/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name }),
-    });
-    const json = await res.json();
+    try {
+      const res = await fetch(`/api/variations/types/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+      const json = await res.json();
 
-    if (!res.ok) {
-      toast.error(json.error || "Gagal memperbarui");
-      return;
+      if (!res.ok) throw new Error(json.error || "Gagal memperbarui tipe variasi.");
+
+      toast.success(json.message);
+      setTypes((prev) => prev.map((t) => (t.id === id ? { ...t, name } : t)));
+    } catch (error: unknown) {
+      const message = error instanceof Error && error.message !== "Failed to fetch" ? error.message : "Gagal memperbarui tipe variasi. Periksa koneksi lalu coba lagi.";
+      toast.error(message);
+      throw new Error(message);
     }
-
-    toast.success(json.message);
-    setTypes((prev) => prev.map((t) => (t.id === id ? { ...t, name } : t)));
   };
 
   const handleTypeDelete = async (id: string) => {
-    const res = await fetch(`/api/variations/types/${id}`, {
-      method: "DELETE",
-    });
-    const json = await res.json();
+    try {
+      const res = await fetch(`/api/variations/types/${id}`, {
+        method: "DELETE",
+      });
+      const json = await res.json();
 
-    if (!res.ok) {
-      toast.error(json.error || "Gagal menghapus");
-      return;
+      if (!res.ok) throw new Error(json.error || "Gagal menghapus tipe variasi.");
+
+      toast.success(json.message);
+      setTypes((prev) => prev.filter((t) => t.id !== id));
+    } catch (error: unknown) {
+      const message = error instanceof Error && error.message !== "Failed to fetch" ? error.message : "Gagal menghapus tipe variasi. Periksa koneksi lalu coba lagi.";
+      toast.error(message);
+      throw new Error(message);
     }
-
-    toast.success(json.message);
-    setTypes((prev) => prev.filter((t) => t.id !== id));
   };
 
   const handleValueAdd = (typeId: string, val: VariationValue) => {
@@ -87,52 +93,58 @@ export function useVariationTypes() {
     valId: string,
     newName: string
   ) => {
-    const res = await fetch(`/api/variations/values/${valId}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ value: newName }),
-    });
-    const json = await res.json();
+    try {
+      const res = await fetch(`/api/variations/values/${valId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ value: newName }),
+      });
+      const json = await res.json();
 
-    if (!res.ok) {
-      toast.error(json.error || "Gagal memperbarui");
-      return;
+      if (!res.ok) throw new Error(json.error || "Gagal memperbarui nilai variasi.");
+
+      toast.success(json.message);
+      setTypes((prev) =>
+        prev.map((t) =>
+          t.id === typeId
+            ? {
+                ...t,
+                values: t.values.map((v) =>
+                  v.id === valId ? { ...v, value: newName } : v
+                ),
+              }
+            : t
+        )
+      );
+    } catch (error: unknown) {
+      const message = error instanceof Error && error.message !== "Failed to fetch" ? error.message : "Gagal memperbarui nilai variasi. Periksa koneksi lalu coba lagi.";
+      toast.error(message);
+      throw new Error(message);
     }
-
-    toast.success(json.message);
-    setTypes((prev) =>
-      prev.map((t) =>
-        t.id === typeId
-          ? {
-              ...t,
-              values: t.values.map((v) =>
-                v.id === valId ? { ...v, value: newName } : v
-              ),
-            }
-          : t
-      )
-    );
   };
 
   const handleValueDelete = async (typeId: string, valId: string) => {
-    const res = await fetch(`/api/variations/values/${valId}`, {
-      method: "DELETE",
-    });
-    const json = await res.json();
+    try {
+      const res = await fetch(`/api/variations/values/${valId}`, {
+        method: "DELETE",
+      });
+      const json = await res.json();
 
-    if (!res.ok) {
-      toast.error(json.error || "Gagal menghapus");
-      return;
+      if (!res.ok) throw new Error(json.error || "Gagal menghapus nilai variasi.");
+
+      toast.success(json.message);
+      setTypes((prev) =>
+        prev.map((t) =>
+          t.id === typeId
+            ? { ...t, values: t.values.filter((v) => v.id !== valId) }
+            : t
+        )
+      );
+    } catch (error: unknown) {
+      const message = error instanceof Error && error.message !== "Failed to fetch" ? error.message : "Gagal menghapus nilai variasi. Periksa koneksi lalu coba lagi.";
+      toast.error(message);
+      throw new Error(message);
     }
-
-    toast.success(json.message);
-    setTypes((prev) =>
-      prev.map((t) =>
-        t.id === typeId
-          ? { ...t, values: t.values.filter((v) => v.id !== valId) }
-          : t
-      )
-    );
   };
 
   return {

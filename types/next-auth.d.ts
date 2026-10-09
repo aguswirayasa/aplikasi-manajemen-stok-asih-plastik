@@ -9,6 +9,7 @@ declare module "next-auth" {
       username: string;
       role: UserRole;
       isActive: boolean;
+      sessionVersion: number;
     } & DefaultSession["user"];
   }
 
@@ -18,6 +19,7 @@ declare module "next-auth" {
     username: string;
     role: UserRole;
     isActive: boolean;
+    sessionVersion: number;
   }
 }
 
@@ -28,5 +30,6 @@ declare module "next-auth/jwt" {
     username: string;
     role: UserRole;
     isActive: boolean;
+    sessionVersion: number;
   }
 }

@@ -5,7 +5,7 @@ import { Sidebar } from "./Sidebar";
 import { BottomNav } from "./BottomNav";
 import { Package } from "lucide-react";
 
-const AUTH_PAGES = ["/login"];
+const AUTH_PAGES = ["/login", "/forgot-password", "/reset-password"];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();

@@ -53,7 +53,7 @@ export function CategoryManagementClient() {
           <Loader2 className="h-6 w-6 animate-spin text-[#939084]" />
         </div>
       ) : error ? (
-        <div className="flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 px-5 py-4 text-red-700">
+        <div role="alert" className="flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 px-5 py-4 text-red-700">
           <AlertCircle className="h-5 w-5 flex-shrink-0" />
           <div>
             <p className="text-sm font-semibold">Gagal memuat data</p>
@@ -121,20 +121,24 @@ function CategoryRow({
 }) {
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const productCount = category._count?.products ?? 0;
   const inUse = productCount > 0;
 
   const handleDelete = async () => {
     setDeleting(true);
+    setDeleteError(null);
     try {
       await onDelete(category.id);
+    } catch (error: unknown) {
+      setDeleteError(error instanceof Error ? error.message : "Gagal menghapus kategori.");
     } finally {
       setDeleting(false);
     }
   };
 
   return (
-    <article className="flex items-center gap-3 rounded-lg border border-[#c5c0b1] bg-[#fffefb] px-5 py-4">
+    <article className="flex flex-wrap items-center gap-3 rounded-lg border border-[#c5c0b1] bg-[#fffefb] px-5 py-4">
       <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded bg-[#eceae3] text-[#ff4f00]">
         <Tags className="h-5 w-5" />
       </div>
@@ -194,6 +198,7 @@ function CategoryRow({
           )}
         />
       </div>
+      {deleteError && <p role="alert" className="order-last w-full text-xs text-red-700">{deleteError}</p>}
     </article>
   );
 }

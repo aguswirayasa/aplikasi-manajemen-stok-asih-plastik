@@ -1,5 +1,5 @@
 import { endOfDay, format, isValid, parseISO, startOfDay } from "date-fns";
-import { fromZonedTime } from "date-fns-tz";
+import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
 import type { Prisma } from "@/generated/prisma/client";
 import { ApiError } from "@/lib/api-helpers";
 import prisma from "@/lib/prisma";
@@ -7,6 +7,7 @@ import prisma from "@/lib/prisma";
 export const REPORT_TIMEZONE = "Asia/Singapore";
 const MAX_SALE_ITEMS = 100;
 const MAX_LATEST_SALES = 10;
+export const MAX_SALES_PERFORMANCE_RANGE_DAYS = 366;
 
 export type SaleCheckoutItemInput = {
   variantId: string;
@@ -65,6 +66,126 @@ export type SalesReport = {
   itemCount: number;
   latestSales: SaleDetail[];
 };
+
+export type SalesPerformance = {
+  period: { fromInput: string; toInput: string; timezone: string };
+  days: Array<{ date: string; revenue: number; transactionCount: number }>;
+  months: Array<{
+    month: string;
+    revenue: number;
+    transactionCount: number;
+    isCurrentMonth: boolean;
+  }>;
+};
+
+export async function getSalesPerformance(
+  now = new Date(),
+  selectedPeriod?: SalesPeriodFilter
+): Promise<SalesPerformance> {
+  const todayInput = formatInTimeZone(now, REPORT_TIMEZONE, "yyyy-MM-dd");
+  if (selectedPeriod) validateSalesPerformanceRange(selectedPeriod);
+  if (selectedPeriod && selectedPeriod.fromInput > todayInput) {
+    throw new ApiError("Tanggal awal tidak boleh melewati hari ini.", 400);
+  }
+
+  const toInput = selectedPeriod
+    ? selectedPeriod.toInput < todayInput
+      ? selectedPeriod.toInput
+      : todayInput
+    : todayInput;
+  const currentMonth = todayInput.slice(0, 7);
+  const [year, month] = currentMonth.split("-").map(Number);
+  const firstMonth = new Date(Date.UTC(year, month - 3, 1));
+  const defaultFromInput = `${firstMonth.getUTCFullYear()}-${String(
+    firstMonth.getUTCMonth() + 1
+  ).padStart(2, "0")}-01`;
+  const fromInput = selectedPeriod?.fromInput ?? defaultFromInput;
+  const from = selectedPeriod?.from ?? fromZonedTime(`${fromInput}T00:00:00`, REPORT_TIMEZONE);
+  const to = selectedPeriod && selectedPeriod.toInput < todayInput
+    ? selectedPeriod.to
+    : now;
+  const days = new Map<string, { cents: number; transactionCount: number }>();
+
+  for (
+    let day = fromInput;
+    day <= toInput;
+    day = addCalendarDays(day, 1)
+  ) {
+    days.set(day, { cents: 0, transactionCount: 0 });
+  }
+
+  const sales = await prisma.sale.findMany({
+    where: { createdAt: { gte: from, lte: to } },
+    select: { createdAt: true, totalAmount: true },
+  });
+
+  for (const sale of sales) {
+    const date = formatInTimeZone(sale.createdAt, REPORT_TIMEZONE, "yyyy-MM-dd");
+    const bucket = days.get(date);
+
+    if (!bucket) continue;
+
+    const amount = Number(sale.totalAmount);
+    const cents = Math.round(amount * 100);
+
+    if (!Number.isFinite(amount) || !Number.isSafeInteger(cents)) {
+      throw new Error("Nilai penjualan tidak valid untuk laporan.");
+    }
+
+    bucket.cents += cents;
+    if (!Number.isSafeInteger(bucket.cents)) {
+      throw new Error("Total penjualan terlalu besar untuk laporan.");
+    }
+    bucket.transactionCount += 1;
+  }
+
+  const months = new Map<string, { cents: number; transactionCount: number }>();
+  for (const [date, day] of days) {
+    const monthKey = date.slice(0, 7);
+    const monthBucket = months.get(monthKey) || { cents: 0, transactionCount: 0 };
+    monthBucket.cents += day.cents;
+    if (!Number.isSafeInteger(monthBucket.cents)) {
+      throw new Error("Total penjualan terlalu besar untuk laporan.");
+    }
+    monthBucket.transactionCount += day.transactionCount;
+    months.set(monthKey, monthBucket);
+  }
+
+  return {
+    period: { fromInput, toInput, timezone: REPORT_TIMEZONE },
+    days: [...days].map(([date, bucket]) => ({
+      date,
+      revenue: bucket.cents / 100,
+      transactionCount: bucket.transactionCount,
+    })),
+    months: [...months].map(([month, bucket]) => ({
+      month,
+      revenue: bucket.cents / 100,
+      transactionCount: bucket.transactionCount,
+      isCurrentMonth: month === currentMonth,
+    })),
+  };
+}
+
+export function validateSalesPerformanceRange(period: SalesPeriodFilter) {
+  const firstDay = Date.parse(`${period.fromInput}T00:00:00Z`);
+  const lastDay = Date.parse(`${period.toInput}T00:00:00Z`);
+  const dayCount = (lastDay - firstDay) / 86_400_000 + 1;
+
+  if (dayCount > MAX_SALES_PERFORMANCE_RANGE_DAYS) {
+    throw new ApiError("Rentang tanggal maksimal 1 tahun (366 hari).", 400);
+  }
+}
+
+function addCalendarDays(date: string, amount: number) {
+  const [year, month, day] = date.split("-").map(Number);
+  const next = new Date(Date.UTC(year, month - 1, day + amount));
+
+  return `${next.getUTCFullYear()}-${String(next.getUTCMonth() + 1).padStart(
+    2,
+    "0"
+  )}-${String(next.getUTCDate()).padStart(2, "0")}`;
+}
 
 export function parseSaleCheckoutPayload(body: unknown): SaleCheckoutInput {
   if (!body || typeof body !== "object") {

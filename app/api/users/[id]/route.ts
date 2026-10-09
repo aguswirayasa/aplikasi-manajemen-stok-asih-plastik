@@ -9,6 +9,7 @@ import {
 import bcrypt from "bcryptjs";
 import type { Role } from "@/generated/prisma/client";
 import { isUserRole } from "@/lib/user-roles";
+import { normalizeRecoveryEmail, validateNewPassword } from "@/lib/password-validation";
 
 export const PUT = withErrorHandler(async (
   req: NextRequest,
@@ -17,6 +18,9 @@ export const PUT = withErrorHandler(async (
   const currentUser = await requireAdmin();
   const { id } = await params;
   const body = await req.json();
+  if (typeof body !== "object" || body === null || Array.isArray(body)) {
+    throw new ApiError("Data user tidak valid.", 400);
+  }
   const { username, name, role, password, isActive } = body;
 
   if (typeof name !== "string" || !isUserRole(role)) {
@@ -50,6 +54,26 @@ export const PUT = withErrorHandler(async (
   const nextIsActive = isActive ?? existingUser.isActive;
   const nextRole = role;
 
+  let nextEmail = existingUser.email;
+  const emailChanged = Object.prototype.hasOwnProperty.call(body, "email")
+    ? (nextEmail = normalizeRecoveryEmail(body.email)) !== existingUser.email
+    : false;
+
+  if (emailChanged) {
+    if (id !== currentUser.id && existingUser.role !== "PEGAWAI") {
+      throw new ApiError("Email pemulihan hanya dapat diubah oleh pemilik akun.", 403);
+    }
+    if (id === currentUser.id && (typeof body.currentPassword !== "string" || !(await bcrypt.compare(body.currentPassword, existingUser.password)))) {
+      throw new ApiError("Password saat ini tidak sesuai.", 400);
+    }
+    if (nextEmail) {
+      const emailOwner = await prisma.user.findUnique({ where: { email: nextEmail }, select: { id: true } });
+      if (emailOwner && emailOwner.id !== id) {
+        throw new ApiError("Email pemulihan sudah digunakan.", 409);
+      }
+    }
+  }
+
   if (
     existingUser.role === "ADMIN" &&
     existingUser.isActive &&
@@ -70,6 +94,10 @@ export const PUT = withErrorHandler(async (
     isActive: boolean;
     username?: string;
     password?: string;
+    email?: string | null;
+    passwordResetTokenHash?: null;
+    passwordResetExpiresAt?: null;
+    sessionVersion?: { increment: number };
   } = {
     name,
     role: nextRole,
@@ -77,33 +105,58 @@ export const PUT = withErrorHandler(async (
   };
 
   if (nextUsername !== undefined) dataToUpdate.username = nextUsername;
+  if (emailChanged) dataToUpdate.email = nextEmail;
+  if (password !== undefined && typeof password !== "string") {
+    throw new ApiError("Password baru tidak valid.", 400);
+  }
   if (typeof password === "string" && password.length > 0) {
-    dataToUpdate.password = await bcrypt.hash(password, 10);
+    dataToUpdate.password = await bcrypt.hash(validateNewPassword(password), 10);
+    dataToUpdate.sessionVersion = { increment: 1 };
+    dataToUpdate.passwordResetTokenHash = null;
+    dataToUpdate.passwordResetExpiresAt = null;
+  }
+  if (emailChanged || !nextIsActive || (existingUser.role === "ADMIN" && nextRole !== "ADMIN")) {
+    dataToUpdate.passwordResetTokenHash = null;
+    dataToUpdate.passwordResetExpiresAt = null;
   }
 
-  let user;
   try {
-    user = await prisma.user.update({
-      where: { id },
-      data: dataToUpdate,
-      select: {
-        id: true,
-        username: true,
-        name: true,
-        role: true,
-        isActive: true,
-        createdAt: true,
+    const result = await prisma.user.updateMany({
+      where: {
+        id,
+        sessionVersion: existingUser.sessionVersion,
+        email: existingUser.email,
+        role: existingUser.role,
+        isActive: existingUser.isActive,
+        password: existingUser.password,
       },
+      data: dataToUpdate,
     });
+    if (result.count !== 1) {
+      throw new ApiError("Data user berubah. Muat ulang halaman lalu coba lagi.", 409);
+    }
   } catch (error) {
-    if (
-      typeof error === "object" && error !== null &&
-      "code" in error && error.code === "P2002" && nextUsername !== undefined
-    ) {
-      throw new ApiError("Username sudah digunakan.", 409);
+    if (error instanceof ApiError) throw error;
+    if (typeof error === "object" && error !== null && "code" in error) {
+      const target = "meta" in error && typeof error.meta === "object" && error.meta !== null && "target" in error.meta
+        ? error.meta.target
+        : undefined;
+      const fields = Array.isArray(target) ? target.join(" ") : String(target ?? "");
+      if (error.code === "P2002" && fields.includes("email")) {
+        throw new ApiError("Email pemulihan sudah digunakan.", 409);
+      }
+      if (error.code === "P2002" && fields.includes("username")) {
+        throw new ApiError("Username sudah digunakan.", 409);
+      }
     }
     throw error;
   }
+
+  const user = await prisma.user.findUnique({
+    where: { id },
+    select: { id: true, username: true, name: true, role: true, isActive: true, email: true, createdAt: true },
+  });
+  if (!user) throw new ApiError("User tidak ditemukan.", 404);
 
   return apiResponse(user);
 });
@@ -137,13 +190,14 @@ export const DELETE = withErrorHandler(async (
 
   const user = await prisma.user.update({
     where: { id },
-    data: { isActive: false },
+    data: { isActive: false, passwordResetTokenHash: null, passwordResetExpiresAt: null },
     select: {
       id: true,
       username: true,
       name: true,
       role: true,
       isActive: true,
+      email: true,
       createdAt: true,
     },
   });

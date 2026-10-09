@@ -46,6 +46,7 @@ export const authOptions: NextAuthOptions = {
           username: user.username,
           role: user.role,
           isActive: user.isActive,
+          sessionVersion: user.sessionVersion,
         };
       },
     }),
@@ -58,19 +59,22 @@ export const authOptions: NextAuthOptions = {
         token.role = user.role;
         token.username = user.username;
         token.isActive = user.isActive;
+        token.sessionVersion = user.sessionVersion;
       }
 
       if (token.id) {
         const persistedUser = await prisma.user.findUnique({
           where: { id: token.id as string },
-          select: { name: true, username: true, role: true, isActive: true },
+          select: { name: true, username: true, role: true, isActive: true, sessionVersion: true },
         });
 
         if (persistedUser) {
           token.name = persistedUser.name;
           token.username = persistedUser.username;
           token.role = persistedUser.role;
-          token.isActive = persistedUser.isActive;
+          token.isActive = persistedUser.isActive &&
+            Number.isInteger(token.sessionVersion) &&
+            token.sessionVersion === persistedUser.sessionVersion;
         } else {
           token.isActive = false;
         }
@@ -85,6 +89,7 @@ export const authOptions: NextAuthOptions = {
         session.user.role = token.role as UserRole;
         session.user.username = token.username as string;
         session.user.isActive = token.isActive as boolean;
+        session.user.sessionVersion = token.sessionVersion as number;
       }
       return session;
     },

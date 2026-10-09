@@ -1,8 +1,10 @@
 import prisma from "@/lib/prisma";
 import {
   buildSalesPeriodFilter,
+  getSalesPerformance,
   getSalesReport,
   REPORT_TIMEZONE,
+  type SalesPerformance,
 } from "@/lib/sales";
 import {
   mergeStockTransactions,
@@ -94,6 +96,16 @@ export async function getDashboardData({
   const salesReport = includeOwnerTotals
     ? await getSalesReport(todayPeriod, 5)
     : null;
+  let salesPerformance: SalesPerformance | null = null;
+  let salesPerformanceError: string | null = null;
+
+  if (includeOwnerTotals) {
+    try {
+      salesPerformance = await getSalesPerformance();
+    } catch {
+      salesPerformanceError = "Gagal memuat performa penjualan.";
+    }
+  }
 
   return {
     totals: includeOwnerTotals
@@ -111,5 +123,7 @@ export async function getDashboardData({
     lowStockVariants,
     recentTransactions,
     salesReport,
+    salesPerformance,
+    salesPerformanceError,
   };
 }

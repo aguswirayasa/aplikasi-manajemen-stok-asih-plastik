@@ -39,13 +39,17 @@ export function VariationTypeCard({
   const [expanded, setExpanded] = useState(true);
   const [editingName, setEditingName] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const inUse = (type._count?.productVariationTypes ?? 0) > 0;
 
   const handleDelete = async () => {
     setDeleting(true);
+    setDeleteError(null);
     try {
       await onTypeDelete(type.id);
+    } catch (error: unknown) {
+      setDeleteError(error instanceof Error ? error.message : "Gagal menghapus tipe variasi.");
     } finally {
       setDeleting(false);
     }
@@ -121,6 +125,8 @@ export function VariationTypeCard({
           />
         </div>
       </div>
+
+      {deleteError && <p role="alert" className="px-5 pt-3 text-xs text-red-700">{deleteError}</p>}
 
       {expanded && (
         <div className="px-5 py-4">
