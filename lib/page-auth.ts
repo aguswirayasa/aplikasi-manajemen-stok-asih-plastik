@@ -5,7 +5,11 @@ import { authOptions } from "@/lib/auth";
 export async function requirePageAuth() {
   const session = await getServerSession(authOptions);
 
-  if (!session?.user || session.user.isActive === false) {
+  if (
+    !session?.user ||
+    session.user.isActive !== true ||
+    !Number.isInteger(session.user.sessionVersion)
+  ) {
     redirect("/login");
   }
 

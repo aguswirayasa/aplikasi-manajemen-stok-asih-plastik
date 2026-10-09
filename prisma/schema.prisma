@@ -19,6 +19,10 @@ model User {
   password         String
   role             Role                        @default(PEGAWAI)
   isActive         Boolean                     @default(true)
+  email            String?                     @unique @db.VarChar(254)
+  passwordResetTokenHash String?                @unique @db.VarChar(64)
+  passwordResetExpiresAt DateTime?
+  sessionVersion   Int                          @default(0)
   telegramChatId   String?                     @unique
   telegramUsername String?
   telegramLinkedAt DateTime?

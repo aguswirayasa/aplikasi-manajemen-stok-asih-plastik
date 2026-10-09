@@ -1,7 +1,7 @@
 import { PrismaClient } from "../generated/prisma/client";
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
 
-const PRISMA_CLIENT_SCHEMA_VERSION = "product-archiving-20260508";
+const PRISMA_CLIENT_SCHEMA_VERSION = "admin-recovery-20261008";
 
 const globalForPrisma = global as unknown as {
   prisma?: PrismaClient;

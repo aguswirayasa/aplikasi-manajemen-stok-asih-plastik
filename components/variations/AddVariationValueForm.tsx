@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Check, Loader2, Plus, X } from "lucide-react";
 import { toast } from "sonner";
 import type { VariationValue } from "@/types/variations";
@@ -15,6 +15,8 @@ export function AddVariationValueForm({
   const [open, setOpen] = useState(false);
   const [val, setVal] = useState("");
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const errorId = useId();
 
   const handleAdd = async () => {
     if (!val.trim()) {
@@ -31,14 +33,21 @@ export function AddVariationValueForm({
       const json = await res.json();
 
       if (!res.ok) {
-        toast.error(json.error || "Gagal menambah nilai");
+        const message = json.error || "Gagal menambah nilai variasi.";
+        setError(message);
+        toast.error(message);
         return;
       }
 
       toast.success(json.message);
       onAdded(json.data);
       setVal("");
+      setError(null);
       setOpen(false);
+    } catch (error: unknown) {
+      const message = error instanceof Error && error.message !== "Failed to fetch" ? error.message : "Gagal menambah nilai variasi. Periksa koneksi lalu coba lagi.";
+      setError(message);
+      toast.error(message);
     } finally {
       setSaving(false);
     }
@@ -47,7 +56,10 @@ export function AddVariationValueForm({
   if (!open) {
     return (
       <button
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          setError(null);
+          setOpen(true);
+        }}
         className="inline-flex items-center gap-1 rounded-full border border-dashed border-[#c5c0b1] px-3 py-1 text-xs text-[#939084] transition-colors hover:border-[#ff4f00] hover:text-[#ff4f00]"
       >
         <Plus className="h-3 w-3" /> Tambah nilai
@@ -56,11 +68,17 @@ export function AddVariationValueForm({
   }
 
   return (
-    <span className="inline-flex items-center gap-1.5">
+    <span className="inline-flex flex-col items-start gap-1">
+      <span className="inline-flex items-center gap-1.5">
       <input
         autoFocus
         value={val}
-        onChange={(e) => setVal(e.target.value)}
+        onChange={(e) => {
+          setVal(e.target.value);
+          setError(null);
+        }}
+        aria-invalid={Boolean(error)}
+        aria-describedby={error ? errorId : undefined}
         onKeyDown={(e) => {
           if (e.key === "Enter") {
             handleAdd();
@@ -96,6 +114,8 @@ export function AddVariationValueForm({
       >
         <X className="h-3.5 w-3.5" />
       </button>
+      </span>
+      {error && <span id={errorId} role="alert" className="text-xs text-red-700">{error}</span>}
     </span>
   );
 }

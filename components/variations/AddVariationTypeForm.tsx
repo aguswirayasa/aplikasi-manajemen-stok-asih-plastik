@@ -13,6 +13,7 @@ export function AddVariationTypeForm({
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleAdd = async () => {
     if (!name.trim()) {
@@ -29,14 +30,21 @@ export function AddVariationTypeForm({
       const json = await res.json();
 
       if (!res.ok) {
-        toast.error(json.error || "Gagal membuat tipe");
+        const message = json.error || "Gagal membuat tipe variasi.";
+        setError(message);
+        toast.error(message);
         return;
       }
 
       toast.success(json.message);
       onAdded({ ...json.data, values: [] });
       setName("");
+      setError(null);
       setOpen(false);
+    } catch (error: unknown) {
+      const message = error instanceof Error && error.message !== "Failed to fetch" ? error.message : "Gagal membuat tipe variasi. Periksa koneksi lalu coba lagi.";
+      setError(message);
+      toast.error(message);
     } finally {
       setSaving(false);
     }
@@ -46,7 +54,10 @@ export function AddVariationTypeForm({
     return (
       <button
         id="btn-add-type"
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          setError(null);
+          setOpen(true);
+        }}
         className="inline-flex items-center gap-2 rounded bg-[#ff4f00] px-4 py-2 text-sm font-semibold text-[#fffefb] transition-colors hover:bg-[#cc3f00]"
       >
         <Plus className="h-4 w-4" />
@@ -56,11 +67,17 @@ export function AddVariationTypeForm({
   }
 
   return (
+    <div className="min-w-0">
     <div className="flex items-center gap-3 rounded-lg border border-[#ff4f00] bg-[#fffefb] p-4">
       <input
         autoFocus
         value={name}
-        onChange={(e) => setName(e.target.value)}
+        onChange={(e) => {
+          setName(e.target.value);
+          setError(null);
+        }}
+        aria-invalid={Boolean(error)}
+        aria-describedby={error ? "variation-type-add-error" : undefined}
         onKeyDown={(e) => {
           if (e.key === "Enter") {
             handleAdd();
@@ -95,6 +112,8 @@ export function AddVariationTypeForm({
       >
         <X className="h-4 w-4" />
       </button>
+    </div>
+    {error && <p id="variation-type-add-error" role="alert" className="mt-1 text-xs text-red-700">{error}</p>}
     </div>
   );
 }

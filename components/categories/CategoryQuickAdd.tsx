@@ -16,10 +16,12 @@ export function CategoryQuickAdd({
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const close = () => {
     if (!saving) {
       setName("");
+      setError(null);
       setOpen(false);
     }
   };
@@ -41,14 +43,21 @@ export function CategoryQuickAdd({
       const json = (await response.json()) as ApiResponse<Category>;
 
       if (!response.ok || !json.data) {
-        toast.error(json.error || "Gagal membuat kategori.");
+        const message = json.error || "Gagal membuat kategori.";
+        setError(message);
+        toast.error(message);
         return;
       }
 
       toast.success(json.message || `Kategori "${json.data.name}" berhasil dibuat.`);
       onCreated(json.data);
       setName("");
+      setError(null);
       setOpen(false);
+    } catch (error: unknown) {
+      const message = error instanceof Error && error.message !== "Failed to fetch" ? error.message : "Gagal membuat kategori. Periksa koneksi lalu coba lagi.";
+      setError(message);
+      toast.error(message);
     } finally {
       setSaving(false);
     }
@@ -59,7 +68,10 @@ export function CategoryQuickAdd({
       <button
         type="button"
         data-category-add
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          setError(null);
+          setOpen(true);
+        }}
         className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[5px] border border-[#ff4f00] px-4 text-[14px] font-semibold text-[#ff4f00] transition-colors hover:bg-[#fff4ed]"
       >
         <Plus className="h-4 w-4" />
@@ -69,11 +81,17 @@ export function CategoryQuickAdd({
   }
 
   return (
+    <div className="min-w-0">
     <div className="flex min-h-12 items-center gap-2 rounded-[5px] border border-[#ff4f00] bg-[#fffefb] px-3">
       <input
         autoFocus
         value={name}
-        onChange={(event) => setName(event.target.value)}
+        onChange={(event) => {
+          setName(event.target.value);
+          setError(null);
+        }}
+        aria-invalid={Boolean(error)}
+        aria-describedby={error ? "category-add-error" : undefined}
         onKeyDown={(event) => {
           if (event.key === "Enter") {
             void handleAdd();
@@ -108,6 +126,8 @@ export function CategoryQuickAdd({
       >
         <X className="h-4 w-4" />
       </button>
+    </div>
+    {error && <p id="category-add-error" role="alert" className="mt-1 text-xs text-red-700">{error}</p>}
     </div>
   );
 }

@@ -13,6 +13,7 @@ import {
   Users,
 } from "lucide-react";
 import { toast } from "sonner";
+import { signOut } from "next-auth/react";
 import { ConfirmAction } from "@/components/ui/confirm-action";
 
 type UserRole = "ADMIN" | "PEGAWAI";
@@ -24,6 +25,7 @@ type ManagedUser = {
   role: UserRole;
   isActive: boolean;
   createdAt: string;
+  email: string | null;
 };
 
 type UserManagementClientProps = {
@@ -34,6 +36,8 @@ const emptyForm = {
   username: "",
   name: "",
   password: "",
+  email: "",
+  currentPassword: "",
   role: "PEGAWAI" as UserRole,
   isActive: true,
 };
@@ -43,7 +47,11 @@ export function UserManagementClient({
 }: UserManagementClientProps) {
   const [users, setUsers] = useState<ManagedUser[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<"username" | "name" | "password" | "email" | "currentPassword", string>>>({});
+  const [statusErrors, setStatusErrors] = useState<Record<string, string>>({});
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
@@ -56,6 +64,9 @@ export function UserManagementClient({
 
   const editingUser = users.find((item) => item.id === editingId);
   const isEditingSelf = editingId === currentUserId;
+  const canEditEmail = !editingId || isEditingSelf || editingUser?.role === "PEGAWAI";
+  const normalizedEmail = form.email.trim().toLowerCase() || null;
+  const emailChanged = canEditEmail && normalizedEmail !== (editingUser?.email ?? null);
   const isLastActiveAdmin =
     editingUser?.role === "ADMIN" &&
     editingUser.isActive &&
@@ -71,9 +82,12 @@ export function UserManagementClient({
       }
 
       setUsers(data.data || []);
+      setLoadError(null);
     } catch (error) {
+      const message = error instanceof Error && error.message !== "Failed to fetch" ? error.message : "Gagal memuat user. Periksa koneksi lalu coba lagi.";
+      setLoadError(message);
       toast.error(
-        error instanceof Error ? error.message : "Gagal memuat user."
+        message
       );
     } finally {
       setLoading(false);
@@ -92,11 +106,15 @@ export function UserManagementClient({
     setIsFormOpen(false);
     setEditingId(null);
     setForm(emptyForm);
+    setFormError(null);
+    setFieldErrors({});
   };
 
   const openCreateForm = () => {
     setEditingId(null);
     setForm(emptyForm);
+    setFormError(null);
+    setFieldErrors({});
     setIsFormOpen(true);
   };
 
@@ -106,25 +124,45 @@ export function UserManagementClient({
       username: user.username,
       name: user.name,
       password: "",
+      email: user.email ?? "",
+      currentPassword: "",
       role: user.role,
       isActive: user.isActive,
     });
     setIsFormOpen(true);
+    setFormError(null);
+    setFieldErrors({});
   };
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
 
     if (!form.username.trim() || !form.name.trim()) {
-      toast.error("Username dan nama wajib diisi.");
+      const message = "Username dan nama wajib diisi.";
+      setFieldErrors({ username: !form.username.trim() ? "Username wajib diisi." : undefined, name: !form.name.trim() ? "Nama lengkap wajib diisi." : undefined });
+      setFormError(message);
+      toast.error(message);
       return;
     }
 
-    if (!editingId && !form.password.trim()) {
-      toast.error("Password wajib diisi untuk user baru.");
+    if (!editingId && !form.password) {
+      const message = "Password wajib diisi untuk user baru.";
+      setFieldErrors({ password: message });
+      setFormError(message);
+      toast.error(message);
       return;
     }
 
+    if (form.password && (form.password.length < 8 || new TextEncoder().encode(form.password).length > 72)) {
+      const message = "Password minimal 8 karakter dan maksimal 72 byte UTF-8.";
+      setFieldErrors({ password: message });
+      setFormError(message);
+      toast.error(message);
+      return;
+    }
+
+    setFormError(null);
+    setFieldErrors({});
     setSaving(true);
 
     try {
@@ -139,6 +177,7 @@ export function UserManagementClient({
             password: form.password,
             role: form.role,
             ...(editingId ? { isActive: form.isActive } : {}),
+            ...(canEditEmail ? { email: normalizedEmail, ...(isEditingSelf && emailChanged ? { currentPassword: form.currentPassword } : {}) } : {}),
           }),
         }
       );
@@ -148,19 +187,33 @@ export function UserManagementClient({
         throw new Error(data.error || "Gagal menyimpan user.");
       }
 
-      toast.success(editingId ? "User diperbarui." : "User baru dibuat.");
+      toast.success(editingId && emailChanged ? (isEditingSelf ? "Email pemulihan disimpan." : "Email disimpan.") : editingId ? "User diperbarui." : "User baru dibuat.");
+      if (isEditingSelf && form.password) {
+        await signOut({ callbackUrl: "/login" });
+        return;
+      }
       await fetchUsers();
       resetForm();
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Gagal menyimpan user."
-      );
+      const message = error instanceof Error && error.message !== "Failed to fetch" ? error.message : "Gagal menyimpan user. Periksa koneksi lalu coba lagi.";
+      const field = message.includes("Username") ? "username"
+        : message.includes("Email pemulihan") ? "email"
+          : message.includes("Password saat ini") ? "currentPassword"
+            : message.includes("Password") ? "password" : null;
+      if (field) setFieldErrors({ [field]: message });
+      else setFormError(message);
+      toast.error(message);
     } finally {
       setSaving(false);
     }
   };
 
   const setUserActive = async (user: ManagedUser, nextIsActive: boolean) => {
+    setStatusErrors((current) => {
+      const next = { ...current };
+      delete next[user.id];
+      return next;
+    });
     try {
       const response = await fetch(`/api/users/${user.id}`, {
         method: nextIsActive ? "PUT" : "DELETE",
@@ -182,10 +235,15 @@ export function UserManagementClient({
       toast.success(nextIsActive ? "User diaktifkan kembali." : "User dinonaktifkan.");
       await fetchUsers();
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Gagal mengubah status user."
-      );
+      const message = error instanceof Error && error.message !== "Failed to fetch" ? error.message : "Gagal mengubah status user. Periksa koneksi lalu coba lagi.";
+      setStatusErrors((current) => ({ ...current, [user.id]: message }));
+      toast.error(message);
     }
+  };
+
+  const clearFieldError = (field: keyof typeof fieldErrors) => {
+    setFieldErrors((current) => ({ ...current, [field]: undefined }));
+    setFormError(null);
   };
 
   return (
@@ -215,6 +273,13 @@ export function UserManagementClient({
         </button>
       </header>
 
+      {loadError && (
+        <div role="alert" className="flex items-center justify-between gap-3 rounded-[5px] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <span>{loadError}</span>
+          <button type="button" onClick={fetchUsers} className="shrink-0 underline">Coba lagi</button>
+        </div>
+      )}
+
       {isFormOpen && (
         <section className="overflow-hidden rounded-[8px] border border-[#c5c0b1] bg-[#fffefb]">
           <div className="border-b border-[#c5c0b1] bg-[#eceae3]/35 p-4">
@@ -229,33 +294,40 @@ export function UserManagementClient({
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5 p-4 sm:p-5">
+            {formError && <p role="alert" className="rounded-[5px] border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{formError}</p>}
             <div className="grid gap-4 md:grid-cols-2">
-              <Field label="Username">
+              <Field label="Username" error={fieldErrors.username} errorId="user-username-error">
                 <input
                   type="text"
                   required
                   value={form.username}
-                  onChange={(event) =>
+                  aria-invalid={Boolean(fieldErrors.username)}
+                  aria-describedby={fieldErrors.username ? "user-username-error" : undefined}
+                  onChange={(event) => {
+                    clearFieldError("username");
                     setForm((current) => ({
                       ...current,
                       username: event.target.value,
-                    }))
-                  }
+                    }));
+                  }}
                   className="min-h-11 w-full rounded-[5px] border border-[#c5c0b1] bg-[#fffefb] px-3 text-[15px] text-[#201515] outline-none focus:border-[#ff4f00]"
                 />
               </Field>
 
-              <Field label="Nama lengkap">
+              <Field label="Nama lengkap" error={fieldErrors.name} errorId="user-name-error">
                 <input
                   type="text"
                   required
                   value={form.name}
-                  onChange={(event) =>
+                  aria-invalid={Boolean(fieldErrors.name)}
+                  aria-describedby={fieldErrors.name ? "user-name-error" : undefined}
+                  onChange={(event) => {
+                    clearFieldError("name");
                     setForm((current) => ({
                       ...current,
                       name: event.target.value,
-                    }))
-                  }
+                    }));
+                  }}
                   className="min-h-11 w-full rounded-[5px] border border-[#c5c0b1] bg-[#fffefb] px-3 text-[15px] text-[#201515] outline-none focus:border-[#ff4f00]"
                 />
               </Field>
@@ -266,17 +338,24 @@ export function UserManagementClient({
                     ? "Password baru (opsional)"
                     : "Password awal"
                 }
+                error={fieldErrors.password}
+                errorId="user-password-error"
               >
                 <input
                   type="password"
                   required={!editingId}
+                  minLength={8}
+                  autoComplete="new-password"
                   value={form.password}
-                  onChange={(event) =>
+                  aria-invalid={Boolean(fieldErrors.password)}
+                  aria-describedby={fieldErrors.password ? "user-password-error" : undefined}
+                  onChange={(event) => {
+                    clearFieldError("password");
                     setForm((current) => ({
                       ...current,
                       password: event.target.value,
-                    }))
-                  }
+                    }));
+                  }}
                   className="min-h-11 w-full rounded-[5px] border border-[#c5c0b1] bg-[#fffefb] px-3 text-[15px] text-[#201515] outline-none focus:border-[#ff4f00]"
                 />
               </Field>
@@ -297,6 +376,28 @@ export function UserManagementClient({
                 </select>
               </Field>
             </div>
+
+            {canEditEmail && (
+              <div className="space-y-4 rounded-[5px] border border-[#c5c0b1] p-4">
+                <Field label={form.role === "ADMIN" ? "Email pemulihan" : "Email"} error={fieldErrors.email} errorId="user-email-error">
+                  <input type="email" autoComplete="email" maxLength={254} value={form.email}
+                    aria-invalid={Boolean(fieldErrors.email)} aria-describedby={fieldErrors.email ? "user-email-error" : undefined}
+                    onChange={event => { clearFieldError("email"); setForm(current => ({ ...current, email: event.target.value })); }}
+                    className="min-h-11 w-full rounded-[5px] border border-[#c5c0b1] bg-[#fffefb] px-3 text-[15px] text-[#201515] outline-none focus:border-[#ff4f00]" />
+                </Field>
+                <p className="text-[13px] text-[#36342e]">{form.role === "ADMIN"
+                  ? "Alamat ini menerima tautan reset password dan tidak diverifikasi secara terpisah. Pastikan alamat benar dan milik pemilik akun. Kosongkan jika tidak ingin menyimpan email pemulihan."
+                  : "Email akun pegawai (opsional) menerima tautan reset password dan tidak diverifikasi secara terpisah. Pastikan alamat benar dan milik pegawai. Kosongkan jika tidak ingin menyimpan email."}</p>
+                {isEditingSelf && emailChanged && (
+                  <Field label="Password saat ini" error={fieldErrors.currentPassword} errorId="user-current-password-error">
+                    <input type="password" autoComplete="current-password" required value={form.currentPassword}
+                      aria-invalid={Boolean(fieldErrors.currentPassword)} aria-describedby={fieldErrors.currentPassword ? "user-current-password-error" : undefined}
+                      onChange={event => { clearFieldError("currentPassword"); setForm(current => ({ ...current, currentPassword: event.target.value })); }}
+                      className="min-h-11 w-full rounded-[5px] border border-[#c5c0b1] bg-[#fffefb] px-3 text-[15px] text-[#201515] outline-none focus:border-[#ff4f00]" />
+                  </Field>
+                )}
+              </div>
+            )}
 
             {editingId && (
               <label className="flex min-h-12 items-center justify-between gap-4 rounded-[8px] border border-[#c5c0b1] bg-[#eceae3]/35 px-4 py-3">
@@ -398,6 +499,7 @@ export function UserManagementClient({
                       user={user}
                       currentUserId={currentUserId}
                       activeAdminCount={activeAdminCount}
+                      operationError={statusErrors[user.id]}
                       onEdit={openEditForm}
                       onSetActive={setUserActive}
                     />
@@ -413,6 +515,7 @@ export function UserManagementClient({
                   user={user}
                   currentUserId={currentUserId}
                   activeAdminCount={activeAdminCount}
+                  operationError={statusErrors[user.id]}
                   onEdit={openEditForm}
                   onSetActive={setUserActive}
                 />
@@ -428,17 +531,24 @@ export function UserManagementClient({
 function Field({
   label,
   children,
+  error,
+  errorId,
 }: {
   label: string;
   children: ReactNode;
+  error?: string;
+  errorId?: string;
 }) {
   return (
-    <label className="block">
-      <span className="mb-2 block text-[13px] font-bold text-[#201515]">
-        {label}
-      </span>
-      {children}
-    </label>
+    <div>
+      <label className="block">
+        <span className="mb-2 block text-[13px] font-bold text-[#201515]">
+          {label}
+        </span>
+        {children}
+      </label>
+      {error && <p id={errorId} role="alert" className="mt-1 text-xs text-red-700">{error}</p>}
+    </div>
   );
 }
 
@@ -446,6 +556,7 @@ function UserTableRow({
   user,
   currentUserId,
   activeAdminCount,
+  operationError,
   onEdit,
   onSetActive,
 }: UserRowProps) {
@@ -465,6 +576,7 @@ function UserTableRow({
           user={user}
           currentUserId={currentUserId}
           activeAdminCount={activeAdminCount}
+          operationError={operationError}
           onEdit={onEdit}
           onSetActive={onSetActive}
         />
@@ -477,6 +589,7 @@ function UserCard({
   user,
   currentUserId,
   activeAdminCount,
+  operationError,
   onEdit,
   onSetActive,
 }: UserRowProps) {
@@ -492,6 +605,7 @@ function UserCard({
           user={user}
           currentUserId={currentUserId}
           activeAdminCount={activeAdminCount}
+          operationError={operationError}
           onEdit={onEdit}
           onSetActive={onSetActive}
         />
@@ -504,6 +618,7 @@ type UserRowProps = {
   user: ManagedUser;
   currentUserId: string;
   activeAdminCount: number;
+  operationError?: string;
   onEdit: (user: ManagedUser) => void;
   onSetActive: (user: ManagedUser, nextIsActive: boolean) => void;
 };
@@ -555,6 +670,7 @@ function UserActions({
   user,
   currentUserId,
   activeAdminCount,
+  operationError,
   onEdit,
   onSetActive,
 }: UserRowProps) {
@@ -564,7 +680,8 @@ function UserActions({
   const statusDisabled = isSelf || isLastActiveAdmin;
 
   return (
-    <div className="flex justify-end gap-2">
+    <div className="flex flex-col items-end gap-2">
+      <div className="flex justify-end gap-2">
       <button
         type="button"
         onClick={() => onEdit(user)}
@@ -585,6 +702,7 @@ function UserActions({
               type="button"
               disabled={statusDisabled}
               onClick={open}
+              aria-label={`Nonaktifkan ${user.name}`}
               className="inline-flex min-h-10 items-center justify-center gap-2 rounded-[5px] border border-[#c5c0b1] bg-[#fffefb] px-3 text-[13px] font-bold text-[#36342e] hover:bg-[#eceae3] hover:text-[#201515] disabled:cursor-not-allowed disabled:opacity-45"
             >
               <Trash2 className="h-4 w-4" />
@@ -597,12 +715,15 @@ function UserActions({
           type="button"
           disabled={statusDisabled}
           onClick={() => onSetActive(user, true)}
+          aria-label={`Aktifkan ${user.name}`}
           className="inline-flex min-h-10 items-center justify-center gap-2 rounded-[5px] border border-[#c5c0b1] bg-[#fffefb] px-3 text-[13px] font-bold text-[#36342e] hover:bg-[#eceae3] hover:text-[#201515] disabled:cursor-not-allowed disabled:opacity-45"
         >
           <UserCheck className="h-4 w-4" />
           <span className="hidden sm:inline">Aktifkan</span>
         </button>
       )}
+      </div>
+      {operationError && <p role="alert" className="max-w-64 text-right text-xs text-red-700">{operationError}</p>}
     </div>
   );
 }

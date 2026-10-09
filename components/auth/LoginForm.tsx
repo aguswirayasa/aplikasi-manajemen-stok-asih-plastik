@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -158,6 +159,9 @@ export function LoginForm() {
             )}
           </button>
         </form>
+        <Link href="/forgot-password" className="mt-5 block text-sm font-semibold text-[#ff4f00] underline">
+          Lupa password?
+        </Link>
       </div>
 
       <div className="mt-8 text-center">
@@ -172,7 +176,7 @@ export function LoginForm() {
 function getLoginErrorMessage(error: string) {
   switch (error) {
     case "Invalid password":
-      return "Password salah. Silakan hubungi admin jika ingin mereset password.";
+      return "Password salah. Gunakan Lupa password? untuk meminta tautan reset jika akun sudah memiliki email.";
     case "User not found":
       return "Username tidak ditemukan. Silakan periksa kembali username Anda.";
     case "User is inactive":

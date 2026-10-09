@@ -5,6 +5,7 @@ import { DashboardTodayCards } from "@/components/dashboard/DashboardTodayCards"
 import { LowStockPanel } from "@/components/dashboard/LowStockPanel";
 import { RecentTransactionsPanel } from "@/components/dashboard/RecentTransactionsPanel";
 import { SalesReportPanel } from "@/components/dashboard/SalesReportPanel";
+import { SalesPerformancePanel } from "@/components/dashboard/SalesPerformancePanel";
 import type { DashboardData, DashboardIcon } from "@/types/dashboard";
 
 export function DashboardOverview({
@@ -32,6 +33,13 @@ export function DashboardOverview({
         </div>
       ) : (
         <DashboardTodayCards today={data.today} />
+      )}
+
+      {isAdmin && (data.salesPerformance || data.salesPerformanceError) && (
+        <SalesPerformancePanel
+          performance={data.salesPerformance}
+          error={data.salesPerformanceError}
+        />
       )}
 
       <section

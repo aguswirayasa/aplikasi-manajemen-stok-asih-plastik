@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Check, Loader2, X } from "lucide-react";
 
 export function InlineEdit({
@@ -16,6 +16,8 @@ export function InlineEdit({
 }) {
   const [val, setVal] = useState(initialValue);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const errorId = useId();
 
   const handleSave = async () => {
     if (!val.trim() || val.trim() === initialValue) {
@@ -24,19 +26,28 @@ export function InlineEdit({
     }
 
     setSaving(true);
+    setError(null);
     try {
       await onSave(val.trim());
+    } catch (error: unknown) {
+      setError(error instanceof Error ? error.message : "Gagal menyimpan perubahan.");
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <span className="inline-flex items-center gap-1.5">
+    <span className="inline-flex flex-col items-start gap-1">
+      <span className="inline-flex items-center gap-1.5">
       <input
         autoFocus
         value={val}
-        onChange={(e) => setVal(e.target.value)}
+        onChange={(e) => {
+          setVal(e.target.value);
+          setError(null);
+        }}
+        aria-invalid={Boolean(error)}
+        aria-describedby={error ? errorId : undefined}
         onKeyDown={(e) => {
           if (e.key === "Enter") {
             handleSave();
@@ -68,6 +79,8 @@ export function InlineEdit({
       >
         <X className="h-3.5 w-3.5" />
       </button>
+      </span>
+      {error && <span id={errorId} role="alert" className="text-xs text-red-700">{error}</span>}
     </span>
   );
 }
