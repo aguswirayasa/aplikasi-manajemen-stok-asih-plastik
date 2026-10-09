@@ -41,7 +41,7 @@ const content = kind === 'forgot' ? <ForgotPasswordForm />
  : kind === 'reset' ? <ResetPasswordForm token={'a'.repeat(64)} />
  : kind === 'invalid' ? <ResetPasswordForm token={null} />
  : kind === 'users' ? <UserManagementClient currentUserId="admin" />
- : <SalesPerformancePanel performance={kind === 'error' ? null : kind === 'empty' ? {...performance, days:performance.days.map(d=>({...d,revenue:0,transactionCount:0})),months:performance.months.map(m=>({...m,revenue:0,transactionCount:0}))} : performance} error={kind === 'error' ? 'Gagal memuat performa penjualan.' : null} />;
+ : <SalesPerformancePanel performance={kind === 'error' ? null : kind === 'no-days' ? {...performance, days: []} : kind === 'empty' ? {...performance, days:performance.days.map(d=>({...d,revenue:0,transactionCount:0})),months:performance.months.map(m=>({...m,revenue:0,transactionCount:0}))} : performance} error={kind === 'error' ? 'Gagal memuat performa penjualan.' : null} />;
 createRoot(document.getElementById('root')).render(<>{content}<Toaster /></>);
 `;
 const bundle = await build({
